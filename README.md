@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img alt="foxhunter logo" src="https://raw.githubusercontent.com/cameronwickes/foxhunter/main/foxhunter.png" width="224px"/><br/>
+  <img alt="foxhunter logo" src="https://raw.githubusercontent.com/cameronwickes/foxhunter/main/logo.png" width="224px"/><br/>
   FoxHunter
 </h1>
 <p align="center">A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping</b> Firefox browser artifacts on Linux platforms for forensic purposes. Enjoy the powers of automation!</p>
