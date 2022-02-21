@@ -1,5 +1,6 @@
 # Import Required Libraries
 import argparse
+import csv
 import ctypes
 import fnmatch
 import logging
@@ -12,6 +13,7 @@ from base64 import b64decode
 from urllib import parse
 import lz4.block as lz4
 from datetime import datetime
+import xml.etree.cElementTree as ET
 
 
 class Addon:
@@ -357,7 +359,7 @@ class Download:
         return self.URL
 
 
-class BrowsingHistory:
+class Browse:
     """
     Stores data relating to a browsing history item.
     """
@@ -876,10 +878,22 @@ class Login:
 
 class FoxHunter:
     """
-    Allows analysis of collected Firefox data. 
+    Allows analysis of collected Firefox data.
     """
 
-    def __init__(self, addons, extensions, certificates, cookies, formHistory, historySearches, downloadHistory, browsingHistory, bookmarks, logins):
+    def __init__(
+        self,
+        addons,
+        extensions,
+        certificates,
+        cookies,
+        formHistory,
+        historySearches,
+        downloadHistory,
+        browsingHistory,
+        bookmarks,
+        logins,
+    ):
         """
         Parameters
         ----------
@@ -904,7 +918,7 @@ class FoxHunter:
         downloadHistory : [Download]
         List of downloads.
 
-        browsingHistory : [BrowsingHistory]
+        browsingHistory : [Browse]
         List of browsing history items.
 
         bookmarks : [Bookmark]
@@ -913,57 +927,30 @@ class FoxHunter:
         logins : [Login]
         List of logins.
         """
-        if addons == []:
-            self.addons = None
-        else:
-            self.addons = addons
 
-        if extensions == []:
-            self.extensions = None
-        else:
-            self.extensions = extensions
+        self.addons = addons
+        self.extensions = extensions
+        self.certificates = certificates
+        self.cookies = cookies
+        self.formHistory = formHistory
+        self.historySearches = historySearches
+        self.downloadHistory = downloadHistory
+        self.browsingHistory = browsingHistory
+        self.bookmarks = bookmarks
+        self.logins = logins
 
-        if certificates == []:
-            self.certificates = None
-        else:
-            self.certificates = certificates
+        # Set the available items.
+        arguments = locals()
+        self.available = [
+            [attribute, value]
+            for attribute, value in arguments.items()
+            if value != [] and attribute != "self"
+        ]
 
-        if cookies == []:
-            self.cookies = None
-        else:
-            self.cookies = cookies
-        
-        if formHistory == []:
-            self.formHistory = None
-        else:
-            self.formHistory = formHistory
+    def findAvailable(self):
+        """Returns the list of set attributes."""
+        return self.available
 
-        if historySearches == []:
-            self.historySearches = None
-        else:
-            self.historySearches = historySearches
-
-        if downloadHistory == []:
-            self.downloadHistory = None
-        else:
-            self.downloadHistory = downloadHistory
-
-        if browsingHistory == []:
-            self.browsingHistory = None
-        else:
-            self.browsingHistory = browsingHistory
-        
-        if bookmarks == []:
-            self.bookmarks = None
-        else:
-            self.bookmarks = bookmarks
-        
-        if logins == []:
-            self.logins = None
-        else:
-            self.logins = logins
-    
-     
 
 def directoryPath(dir):
     """
@@ -1288,7 +1275,9 @@ def findFormHistory(formHistoryPath):
 
     # Check for presence of formhistory.sqlite in profile folder. Return if not found.
     if not fileExists(formHistoryPath):
-        logging.debug("[!] Failed to Gather Autocomplete History from 'formhistory.sqlite'")
+        logging.debug(
+            "[!] Failed to Gather Autocomplete History from 'formhistory.sqlite'"
+        )
         return formHistoryList
 
     try:
@@ -1315,7 +1304,9 @@ def findFormHistory(formHistoryPath):
         sys.exit(1)
 
     # Return the list of form field history objects.
-    logging.debug("[^] Successfully Gathered Autocomplete History From 'formhistory.sqlite'")
+    logging.debug(
+        "[^] Successfully Gathered Autocomplete History From 'formhistory.sqlite'"
+    )
     return formHistoryList
 
 
@@ -1431,7 +1422,7 @@ def findBrowsingHistory(browsingHistoryPath):
 
     Return Values
     -------------
-    browsingHistoryList : [BrowsingHistory]
+    browsingHistoryList : [Browse]
     List of identified browsing history items.
     """
     browsingHistoryList = []
@@ -1450,7 +1441,7 @@ def findBrowsingHistory(browsingHistoryPath):
         for extractedBrowsingHistory in databaseCursor.execute(
             "select datetime(last_visit_date/1000000,'unixepoch') as visit_date, url, title, visit_type, visit_count FROM moz_places,moz_historyvisits WHERE moz_places.id = moz_historyvisits.place_id"
         ):
-            browsingHistoryObject = BrowsingHistory(
+            browsingHistoryObject = Browse(
                 date=extractedBrowsingHistory[0],
                 URL=extractedBrowsingHistory[1],
                 title=extractedBrowsingHistory[2],
@@ -1553,7 +1544,7 @@ def findBookmarks(bookmarksPath, bookmarksFolder):
         sys.exit(1)
 
     logging.debug("[^] Successfully Gathered Active Bookmarks From 'places.sqlite'")
-    
+
     # Extraction of BACKUP bookmarks (maybe deleted...)
     for bookmarkBackup in os.listdir(bookmarksFolder):
         with open(os.path.join(bookmarksFolder, bookmarkBackup), "rb") as backupMozFile:
@@ -1643,7 +1634,9 @@ def findLoginData(loginPath, keyPath):
         if blankResult == True:
             # Decrypt using blank password.
             if loginData.authenticate(""):
-                logging.debug("[^] Successfully Attempted Blank Authentication on Key Database")
+                logging.debug(
+                    "[^] Successfully Attempted Blank Authentication on Key Database"
+                )
                 loginData.decryptLogins()
                 loginData.deactivateProfile()
             return loginData.getLogins()
@@ -1682,7 +1675,9 @@ def findLoginData(loginPath, keyPath):
                     # Decrypt logins if correct.
                     if passwordResult == True:
                         if loginData.authenticate(password):
-                            logging.debug("[^] Successfully Attempted Password Authentication on Key Database")
+                            logging.debug(
+                                "[^] Successfully Attempted Password Authentication on Key Database"
+                            )
                             loginData.decryptLogins()
                             loginData.deactivateProfile()
                         return loginData.getLogins()
@@ -1717,7 +1712,11 @@ def findLoginData(loginPath, keyPath):
                         # Decrypt logins if password is found.
                         else:
                             if loginData.authenticate(bruteForceAttempt):
-                                logging.debug("[^] Successfully Attempted Brute Force Attack With Password '{}' on Key Database".format(bruteForceAttempt))
+                                logging.debug(
+                                    "[^] Successfully Attempted Brute Force Attack With Password '{}' on Key Database".format(
+                                        bruteForceAttempt
+                                    )
+                                )
                                 loginData.decryptLogins()
                                 loginData.deactivateProfile()
                             return loginData.getLogins()
@@ -1727,6 +1726,110 @@ def findLoginData(loginPath, keyPath):
                         logging.error(
                             "[!] No Such File or Directory {}".format(dictionary)
                         )
+            return loginData.getLogins()
+
+
+def dumpData(foxHunter, type, directory):
+    """
+    Dumps extracted Firefox data to various file formats.
+
+    Parameters
+    ----------
+    foxHunter : FoxHunter
+    The FoxHunter object containing data to dump.
+
+    type : str
+    File type to dump to.
+
+    directory : str
+    Path to store dumped data.
+    """
+    # Check for lack of data to dump.
+    if not foxHunter.findAvailable():
+        logging.error("[!] No Data Gathered From FoxHunter.")
+        sys.exit(1)
+
+    # Loop through all gathered datasets one by one
+    for attribute, values in foxHunter.findAvailable():
+
+        # Create a printable version of the attribute.
+        printableAttribute = (
+            "".join(
+                " " + char if char.isupper() else char.strip() for char in attribute
+            )
+            .strip()
+            .title()
+        )
+        filename = "{}.{}".format(attribute, type)
+
+        # Deal with CSV formatting.
+        if type == "csv":
+            try:
+                with open(
+                    os.path.join(directory, filename), "w+", newline=""
+                ) as csvFile:
+                    writer = csv.writer(csvFile)
+                    writer.writerow(list(values[0].__dict__.keys()))
+                    for item in values:
+                        writer.writerow(list(item.__dict__.values()))
+
+            except BaseException:
+                logging.error(
+                    "[!] Failed to Dump {} to '{}'".format(printableAttribute, filename)
+                )
+            else:
+                logging.debug(
+                    "[^] Successfully Dumped {} to '{}'".format(
+                        printableAttribute, filename
+                    )
+                )
+
+        # Deal with JSON formatting.
+        if type == "json":
+            try:
+                with open(
+                    os.path.join(directory, filename), "w+", newline=""
+                ) as jsonFile:
+                    jsonString = json.dumps([object.__dict__ for object in values])
+                    jsonFile.write(jsonString)
+
+            except BaseException:
+                logging.error(
+                    "[!] Failed to Dump {} to '{}'".format(printableAttribute, filename)
+                )
+            else:
+                logging.debug(
+                    "[^] Successfully Dumped {} to '{}'".format(
+                        printableAttribute, filename
+                    )
+                )
+
+        # Deal with XML formatting.
+        if type == "xml":
+            try:
+                # Create the XML tree.
+                root = ET.Element(attribute)
+                for object in values:
+                    sub = ET.SubElement(root, object.__class__.__name__.lower())
+                    for key in object.__dict__.keys():
+                        ET.SubElement(sub, key).text = str(object.__dict__[key])
+
+                # Write the XML tree to file.
+                tree = ET.ElementTree(root)
+                tree.write(os.path.join(directory, filename))
+
+            except BaseException:
+                logging.error(
+                    "[!] Failed to Dump {} to '{}'".format(printableAttribute, filename)
+                )
+            else:
+                logging.debug(
+                    "[^] Successfully Dumped {} to '{}'".format(
+                        printableAttribute, filename
+                    )
+                )
+
+    logging.info("[^] Data Dump Complete!")
 
 
 if __name__ == "__main__":
@@ -1776,10 +1879,34 @@ if __name__ == "__main__":
         required=False,
     )
     parser.add_argument(
-        "-d",
-        "--directory",
+        "-p",
+        "--profile",
         type=directoryPath,
         help="directory of firefox profile to seek artifacts",
+        required=False,
+    )
+    parser.add_argument(
+        "-oC",
+        "--output-csv",
+        type=directoryPath,
+        metavar="OUTPUT_DIR",
+        help="directory to dump artifacts in CSV format",
+        required=False,
+    )
+    parser.add_argument(
+        "-oJ",
+        "--output-json",
+        type=directoryPath,
+        metavar="OUTPUT_DIR",
+        help="directory to dump artifacts in JSON format",
+        required=False,
+    )
+    parser.add_argument(
+        "-oX",
+        "--output-xml",
+        type=directoryPath,
+        metavar="OUTPUT_DIR",
+        help="directory to dump artifacts in XML format",
         required=False,
     )
 
@@ -1790,9 +1917,19 @@ if __name__ == "__main__":
     if arguments.quiet == False:
         logging.basicConfig(level=logging.DEBUG, format="%(message)s", force=True)
 
+    # Check for presence of at least one output argument.
+    if (
+        arguments.output_csv is None
+        and arguments.output_json is None
+        and arguments.output_xml is None
+    ):
+        parser.error(
+            "one of the following arguments is required: -oC/--output-csv, -oJ/--output-json, -oX/--output-xml"
+        )
+
     # If no profile directory specified, search the system for them, and let the user choose.
-    if arguments.directory == None:
-        arguments.directory = chooseFirefoxProfileDirectory()
+    if arguments.profile == None:
+        arguments.profile = chooseFirefoxProfileDirectory()
 
     logging.debug("[*] Received Firefox Profile!")
     logging.debug("[*] Searching Selected Profile Directory for Artifacts...")
@@ -1800,55 +1937,81 @@ if __name__ == "__main__":
     logging.debug("\n\033[1m\033[4m[*] Extracting Addons and Extensions...\033[0m\n")
 
     # Search for addons within selected firefox profile (addons.json)
-    addons = findAddons(arguments.directory + "/addons.json")
+    addons = findAddons(arguments.profile + "/addons.json")
 
     # Search for extensions within selected firefox profile (extensions.json).
-    extensions = findExtensions(arguments.directory + "/extensions.json")
+    extensions = findExtensions(arguments.profile + "/extensions.json")
 
-    logging.debug("\n\033[1m\033[4m[*] Extracting Certificates, Cookies and Form History...\033[0m\n")
+    logging.debug(
+        "\n\033[1m\033[4m[*] Extracting Certificates, Cookies and Form History...\033[0m\n"
+    )
 
     # Search for certificates within selected firefox profile (cert9.db)
-    certificates = findCertificates(arguments.directory + "/cert9.db")
+    certificates = findCertificates(arguments.profile + "/cert9.db")
 
     # Search for cookies within selected firefox profile (cookies.sqlite)
-    cookies = findCookies(arguments.directory + "/cookies.sqlite")
+    cookies = findCookies(arguments.profile + "/cookies.sqlite")
 
     # Search for web form data within selected firefox profile (formhistory.sqlite)
-    formHistory = findFormHistory(arguments.directory + "/formhistory.sqlite")
+    formHistory = findFormHistory(arguments.profile + "/formhistory.sqlite")
 
     logging.debug("\n\033[1m\033[4m[*] Extracting History Items...\033[0m\n")
 
     # Search for history searches within selected firefox profile (places.sqlite)
-    historySearches = findHistorySearches(arguments.directory + "/places.sqlite")
+    historySearches = findHistorySearches(arguments.profile + "/places.sqlite")
 
     # Search for downloads within selected firefox profile. (places.sqlite)
-    downloadHistory = findDownloadHistory(arguments.directory + "/places.sqlite")
+    downloadHistory = findDownloadHistory(arguments.profile + "/places.sqlite")
 
     # Search for browsing history within selected firefox profile (places.sqlite)
-    browsingHistory = findBrowsingHistory(arguments.directory + "/places.sqlite")
+    browsingHistory = findBrowsingHistory(arguments.profile + "/places.sqlite")
 
-    logging.debug("\n\033[1m\033[4m[*] Extracting Active and Deleted Bookmarks...\033[0m\n")
+    logging.debug(
+        "\n\033[1m\033[4m[*] Extracting Active and Deleted Bookmarks...\033[0m\n"
+    )
 
     # Search for bookmarks within selected firefox profile. (places.sqlite/bookmarkbackups)
     bookmarks = findBookmarks(
-        arguments.directory + "/places.sqlite", arguments.directory + "/bookmarkbackups"
+        arguments.profile + "/places.sqlite", arguments.profile + "/bookmarkbackups"
     )
 
-    logging.debug("\n\033[1m\033[4m[*] Extracting and Decrypting Login Data...\033[0m\n")
+    logging.debug(
+        "\n\033[1m\033[4m[*] Extracting and Decrypting Login Data...\033[0m\n"
+    )
 
     # Search for logins and passwords within selected firefox profile (logins.json/key4.db)
     # Inspiration from https://gist.github.com/dhondta/2e4946f791e5860bdb588d452b5b1570#file-firefox_decrypt_modified-py
     logins = findLoginData(
-        arguments.directory + "/logins.json",
-        arguments.directory + "/key4.db",
+        arguments.profile + "/logins.json",
+        arguments.profile + "/key4.db",
     )
 
     # Create the FoxHunter object to analyse data.
-    foxHunter = FoxHunter(addons, extensions, certificates, cookies, formHistory, historySearches, downloadHistory, browsingHistory, bookmarks, logins)
-    
+    foxHunter = FoxHunter(
+        addons,
+        extensions,
+        certificates,
+        cookies,
+        formHistory,
+        historySearches,
+        downloadHistory,
+        browsingHistory,
+        bookmarks,
+        logins,
+    )
+
+    logging.debug("\n\033[1m\033[4m[*] Dumping Gathered Data...\033[0m\n")
+
+    # Check the input arguments for correct formatting.
+    if arguments.output_csv:
+        dumpData(foxHunter, "csv", arguments.output_csv)
+    elif arguments.output_json:
+        dumpData(foxHunter, "json", arguments.output_json)
+    elif arguments.output_xml:
+        dumpData(foxHunter, "xml", arguments.output_xml)
+
     print("\n[*] Shutting Down...")
 
 # Certificates
 # Relative Paths & Check File vs Directory
-# Dump Directory + Output to CSV, JSON
 # Analysis Mode
