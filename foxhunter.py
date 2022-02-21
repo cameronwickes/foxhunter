@@ -609,6 +609,7 @@ class LoginDecrypter:
                     logging.error(
                         "[!] Password decryption failed. Passwords protected by a Master Password!"
                     )
+                    sys.exit(1)
 
                 finalData = ctypes.string_at(
                     decryptedData.data, decryptedData.len
@@ -661,7 +662,7 @@ class LoginData:
 
         # Check for error on initialisation.
         if errorCode != 0:
-            logging.error("[!] NSS Profile Failure.")
+            logging.error("[!] Couldn't Initialise NSS Profile...")
             self.decrypter.setDecryptionStatus(False)
 
     def attemptBlankAuthentication(self):
@@ -677,18 +678,16 @@ class LoginData:
         keySlot = self.decrypter.PK11_GetInternalKeySlot()
 
         if not keySlot:
-            logging.error("[!] Couldn't retrieve keyslot.")
+            logging.error("[!] Couldn't retrieve keyslot...")
             return None
 
         errorCode = self.decrypter.PK11_CheckUserPassword(keySlot, "".encode("utf-8"))
 
         # Check the result of authentication and return as necessary.
         if errorCode != 0:
-            logging.info("[*] Blank Password Authentication Failed...")
             self.decrypter.PK11_FreeSlot(keySlot)
             return False
         else:
-            logging.info("[*] Blank Password Authentication Succeeded...")
             self.decrypter.PK11_FreeSlot(keySlot)
             return True
 
@@ -710,7 +709,7 @@ class LoginData:
         keySlot = self.decrypter.PK11_GetInternalKeySlot()
 
         if not keySlot:
-            logging.error("[!] Couldn't retrieve keyslot.")
+            logging.error("[!] Couldn't retrieve keyslot...")
             return None
 
         errorCode = self.decrypter.PK11_CheckUserPassword(
@@ -719,11 +718,9 @@ class LoginData:
 
         # Check the result of authentication and return as necessary.
         if errorCode != 0:
-            logging.info("[*] Password Authentication Failed...")
             self.decrypter.PK11_FreeSlot(keySlot)
             return False
         else:
-            logging.info("[*] Password Authentication Succeeded!")
             self.decrypter.PK11_FreeSlot(keySlot)
             return True
 
@@ -757,7 +754,7 @@ class LoginData:
                 keySlot = self.decrypter.PK11_GetInternalKeySlot()
 
                 if not keySlot:
-                    logging.error("[!] Couldn't retrieve keyslot.")
+                    logging.error("[!] Couldn't retrieve keyslot...")
                     return True
 
                 errorCode = self.decrypter.PK11_CheckUserPassword(
@@ -766,11 +763,6 @@ class LoginData:
 
                 # If the error code is zero, password authentication has succeeded, return the current guess.
                 if errorCode == 0:
-                    logging.info(
-                        '[*] Brute Force Authentication Succeeded With Password "{}"!'.format(
-                            guess
-                        )
-                    )
                     return guess
 
         # If correct password is not in wordlist, return None.
@@ -795,7 +787,7 @@ class LoginData:
         keySlot = self.decrypter.PK11_GetInternalKeySlot()
 
         if not keySlot:
-            logging.error("[!] Couldn't retrieve keyslot.")
+            logging.error("[!] Couldn't retrieve keyslot...")
             return False
 
         # Authenticate to the NSS library using the correct password.
@@ -882,6 +874,97 @@ class Login:
         self.password = password
 
 
+class FoxHunter:
+    """
+    Allows analysis of collected Firefox data. 
+    """
+
+    def __init__(self, addons, extensions, certificates, cookies, formHistory, historySearches, downloadHistory, browsingHistory, bookmarks, logins):
+        """
+        Parameters
+        ----------
+        addons : [Addon]
+        List of installed addons.
+
+        extensions : [Extension]
+        List of installed extensions.
+
+        certificates : [Certificate]
+        List of installed certificates.
+
+        cookies : [Cookie]
+        List of stored cookies.
+
+        formHistory : [FormField]
+        List of autocomplete form history fields.
+
+        historySearches : [HistorySearch]
+        List of history searches.
+
+        downloadHistory : [Download]
+        List of downloads.
+
+        browsingHistory : [BrowsingHistory]
+        List of browsing history items.
+
+        bookmarks : [Bookmark]
+        List of bookmarks.
+
+        logins : [Login]
+        List of logins.
+        """
+        if addons == []:
+            self.addons = None
+        else:
+            self.addons = addons
+
+        if extensions == []:
+            self.extensions = None
+        else:
+            self.extensions = extensions
+
+        if certificates == []:
+            self.certificates = None
+        else:
+            self.certificates = certificates
+
+        if cookies == []:
+            self.cookies = None
+        else:
+            self.cookies = cookies
+        
+        if formHistory == []:
+            self.formHistory = None
+        else:
+            self.formHistory = formHistory
+
+        if historySearches == []:
+            self.historySearches = None
+        else:
+            self.historySearches = historySearches
+
+        if downloadHistory == []:
+            self.downloadHistory = None
+        else:
+            self.downloadHistory = downloadHistory
+
+        if browsingHistory == []:
+            self.browsingHistory = None
+        else:
+            self.browsingHistory = browsingHistory
+        
+        if bookmarks == []:
+            self.bookmarks = None
+        else:
+            self.bookmarks = bookmarks
+        
+        if logins == []:
+            self.logins = None
+        else:
+            self.logins = logins
+    
+     
+
 def directoryPath(dir):
     """
     Checks that the specified path is a directory.
@@ -934,7 +1017,7 @@ def chooseFirefoxProfileDirectory():
     """
     firefoxProfiles = []
 
-    logging.debug("[*] No Directory Specified - Finding Firefox Profiles...\n")
+    logging.debug("[*] No Profile Directory Specified - Finding Firefox Profiles...\n")
     # Recursively search from root directory.
     for root, dirnames, filenames in os.walk("/"):
         # Find profiles.ini file.
@@ -1010,10 +1093,8 @@ def findAddons(addonsPath):
 
     # Check for presence of addons.json in profile folder. Return if not found.
     if not fileExists(addonsPath):
-        logging.debug("[!] Could not find addons.json in profile. Skipping...")
+        logging.debug("[!] Failed to Gather Addons from 'addons.json'")
         return addonList
-
-    logging.debug("[*] Extracting Addons from addons.json...")
 
     # Open the file containing addons and load as json object.
     with open(addonsPath) as addonsFile:
@@ -1034,6 +1115,7 @@ def findAddons(addonsPath):
         addonList.append(addonObject)
 
     # Return list of addon objects.
+    logging.debug("[^] Successfully Gathered Addons From 'addons.json'")
     return addonList
 
 
@@ -1055,10 +1137,8 @@ def findExtensions(extensionsPath):
 
     # Check for presence of extensions.json in profile folder. Return if not found.
     if not fileExists(extensionsPath):
-        logging.debug("[!] Could not find extensions.json in profile. Skipping...")
+        logging.debug("[!] Failed to Gather Extensions from 'extensions.json'")
         return extensionList
-
-    logging.debug("[*] Extracting Addons from extensions.json...")
 
     # Open the file containing addons and load as json object.
     with open(extensionsPath) as extensionsFile:
@@ -1082,6 +1162,7 @@ def findExtensions(extensionsPath):
         extensionList.append(extensionObject)
 
     # Return list of extension objects.
+    logging.debug("[^] Successfully Gathered Extensions From 'extensions.json'")
     return extensionList
 
 
@@ -1103,10 +1184,8 @@ def findCertificates(certificatesPath):
 
     # Check for presence of certs9.db in profile folder. Return if not found.
     if not fileExists(certificatesPath):
-        logging.debug("[!] Could not find cert9.db in profile. Skipping...")
+        logging.debug("[!] Failed to Gather Certificates from 'cert9.db'")
         return certificatesList
-
-    logging.debug("[*] Extracting Certificates from cert9.db...")
 
     try:
         # Create connection to database and create cursor.
@@ -1132,6 +1211,7 @@ def findCertificates(certificatesPath):
         sys.exit(1)
 
     # Return the list of certificate objects.
+    logging.debug("[^] Successfully Gathered Certificates From 'cert9.db'")
     return certificatesList
 
 
@@ -1153,10 +1233,8 @@ def findCookies(cookiesPath):
 
     # Check for presence of cookies.sqlite in profile folder. Return if not found.
     if not fileExists(cookiesPath):
-        logging.debug("[!] Could not find cookies.sqlite in profile. Skipping...")
+        logging.debug("[!] Failed to Gather Cookies from 'cookies.sqlite'")
         return cookiesList
-
-    logging.debug("[*] Extracting Cookies from cookies.sqlite...")
 
     try:
         # Create connection to database and create cursor.
@@ -1188,6 +1266,7 @@ def findCookies(cookiesPath):
         sys.exit(1)
 
     # Return the list of cookie objects.
+    logging.debug("[^] Successfully Gathered Cookies From 'cookies.sqlite'")
     return cookiesList
 
 
@@ -1209,10 +1288,8 @@ def findFormHistory(formHistoryPath):
 
     # Check for presence of formhistory.sqlite in profile folder. Return if not found.
     if not fileExists(formHistoryPath):
-        logging.debug("[!] Could not find formhistory.sqlite in profile. Skipping...")
+        logging.debug("[!] Failed to Gather Autocomplete History from 'formhistory.sqlite'")
         return formHistoryList
-
-    logging.debug("[*] Extracting Autocomplete Form History from formhistory.sqlite...")
 
     try:
         # Create connection to database and create cursor.
@@ -1238,6 +1315,7 @@ def findFormHistory(formHistoryPath):
         sys.exit(1)
 
     # Return the list of form field history objects.
+    logging.debug("[^] Successfully Gathered Autocomplete History From 'formhistory.sqlite'")
     return formHistoryList
 
 
@@ -1259,10 +1337,8 @@ def findHistorySearches(historySearchPath):
 
     # Check for presence of places.sqlite in profile folder. Return if not found.
     if not fileExists(historySearchPath):
-        logging.debug("[!] Could not find places.sqlite in profile. Skipping...")
+        logging.debug("[!] Failed to Gather History Searches from 'places.sqlite'")
         return historySearchList
-
-    logging.debug("[*] Extracting History Searches from places.sqlite...")
 
     try:
         # Create connection to database and create cursor.
@@ -1288,6 +1364,7 @@ def findHistorySearches(historySearchPath):
         sys.exit(1)
 
     # Return the list of history search objects.
+    logging.debug("[^] Successfully Gathered History Searches From 'places.sqlite'")
     return historySearchList
 
 
@@ -1309,10 +1386,8 @@ def findDownloadHistory(downloadHistoryPath):
 
     # Check for presence of places.sqlite in profile folder. Return if not found.
     if not fileExists(downloadHistoryPath):
-        logging.debug("[!] Could not find places.sqlite in profile. Skipping...")
+        logging.debug("[!] Failed to Gather Download History from 'places.sqlite'")
         return downloadHistoryList
-
-    logging.debug("[*] Extracting Download History from places.sqlite...")
 
     try:
         # Create connection to database and create cursor.
@@ -1341,6 +1416,7 @@ def findDownloadHistory(downloadHistoryPath):
         sys.exit(1)
 
     # Return the list of download history objects.
+    logging.debug("[^] Successfully Gathered Download History From 'places.sqlite'")
     return downloadHistoryList
 
 
@@ -1362,10 +1438,8 @@ def findBrowsingHistory(browsingHistoryPath):
 
     # Check for presence of places.sqlite in profile folder. Return if not found.
     if not fileExists(browsingHistoryPath):
-        logging.debug("[!] Could not find places.sqlite in profile. Skipping...")
+        logging.debug("[!] Failed to Gather Browsing History from 'places.sqlite'")
         return browsingHistoryList
-
-    logging.debug("[*] Extracting Browsing History from places.sqlite...")
 
     try:
         # Create connection to database and create cursor.
@@ -1393,6 +1467,7 @@ def findBrowsingHistory(browsingHistoryPath):
         sys.exit(1)
 
     # Return the list of brrowsing history objects.
+    logging.debug("[^] Successfully Gathered Browsing History From 'places.sqlite'")
     return browsingHistoryList
 
 
@@ -1449,10 +1524,8 @@ def findBookmarks(bookmarksPath, bookmarksFolder):
 
     # Check for presence of places.sqlite in profile folder. Return if not found.
     if not fileExists(bookmarksPath):
-        logging.debug("[!] Could not find places.sqlite in profile. Skipping...")
+        logging.debug("[!] Failed to Gather Active Bookmarks from 'places.sqlite'")
         return bookmarksList
-
-    logging.debug("[*] Extracting Bookmarks from places.sqlite...")
 
     # Extraction of ACTIVE bookmarks (places.sqlite)
     try:
@@ -1479,6 +1552,8 @@ def findBookmarks(bookmarksPath, bookmarksFolder):
         )
         sys.exit(1)
 
+    logging.debug("[^] Successfully Gathered Active Bookmarks From 'places.sqlite'")
+    
     # Extraction of BACKUP bookmarks (maybe deleted...)
     for bookmarkBackup in os.listdir(bookmarksFolder):
         with open(os.path.join(bookmarksFolder, bookmarkBackup), "rb") as backupMozFile:
@@ -1503,6 +1578,7 @@ def findBookmarks(bookmarksPath, bookmarksFolder):
                         bookmarksList.append(bookmarkObject)
 
     # Return the list of bookmark objects.
+    logging.debug("[^] Successfully Gathered Deleted Bookmarks From 'bookmarkbackups/'")
     return bookmarksList
 
 
@@ -1528,15 +1604,13 @@ def findLoginData(loginPath, keyPath):
 
     # Check for presence of logins.json in profile folder. Return if not found.
     if not fileExists(loginPath):
-        logging.debug("[!] Could not find logins.json in profile. Skipping...")
+        logging.debug("[!] Failed to Gather Login Data from 'logins.json'")
         return loginList
 
     # Check for presence of key4.db in profile folder. Skip Decryption if not found.
     if not fileExists(keyPath):
-        logging.debug("[!] Could not find key4.db in profile. Skipping Decryption...")
+        logging.debug("[!] Failed to Gather Key Database 'key4.db'.")
         decryptionSkip = True
-
-    logging.debug("[*] Extracting Login Data from logins.json...")
 
     # Create the LoginData object used for storing logins and decrypting.
     loginData = LoginData(profile="/".join(loginPath.split("/")[:-1]))
@@ -1557,6 +1631,8 @@ def findLoginData(loginPath, keyPath):
         )
         loginData.addLogin(loginObject)
 
+    logging.debug("[^] Successfully Gathered Encrypted Logins From 'logins.json'")
+
     # If decryption step not skipped, attempt decrypt of passwords.
     if not decryptionSkip:
 
@@ -1567,6 +1643,7 @@ def findLoginData(loginPath, keyPath):
         if blankResult == True:
             # Decrypt using blank password.
             if loginData.authenticate(""):
+                logging.debug("[^] Successfully Attempted Blank Authentication on Key Database")
                 loginData.decryptLogins()
                 loginData.deactivateProfile()
             return loginData.getLogins()
@@ -1596,7 +1673,7 @@ def findLoginData(loginPath, keyPath):
                 # Password authentication selected.
                 if selectedOption == "1":
                     password = input(
-                        "\n[+] Please Enter the Master Password to Decrypt Usernames & Passwords: "
+                        "[+] Please Enter the Master Password to Decrypt Usernames & Passwords: "
                     )
 
                     # Attempt authentication with entered password.
@@ -1605,6 +1682,7 @@ def findLoginData(loginPath, keyPath):
                     # Decrypt logins if correct.
                     if passwordResult == True:
                         if loginData.authenticate(password):
+                            logging.debug("[^] Successfully Attempted Password Authentication on Key Database")
                             loginData.decryptLogins()
                             loginData.deactivateProfile()
                         return loginData.getLogins()
@@ -1618,7 +1696,7 @@ def findLoginData(loginPath, keyPath):
                 # Bruteforce attack selected.
                 elif selectedOption == "2":
                     # Get the wordlist from the user
-                    dictionary = input("\n[+] Please Enter the Path to the Wordlist: ")
+                    dictionary = input("[+] Please Enter the Path to the Wordlist: ")
                     if os.path.exists(dictionary):
                         logging.info(
                             "[*] Attempting to Brute Force (This May Take a While...)"
@@ -1639,6 +1717,7 @@ def findLoginData(loginPath, keyPath):
                         # Decrypt logins if password is found.
                         else:
                             if loginData.authenticate(bruteForceAttempt):
+                                logging.debug("[^] Successfully Attempted Brute Force Attack With Password '{}' on Key Database".format(bruteForceAttempt))
                                 loginData.decryptLogins()
                                 loginData.deactivateProfile()
                             return loginData.getLogins()
@@ -1662,9 +1741,9 @@ if __name__ == "__main__":
             :@@@@@@&P55Y?G@@@7                   .^J#@@@@@P:J              
             !@@@@@@@@@@@@@@@B          .~?JYJ?!.     .5@@@@&&P             
             5@@@@@@@@@@@@@@@@&J!!!!^  YGJ~:.:~7Y5      .B@@@@@!            
-           G@@@@@@@@@@@@@@@@@@@@@@@P GJ:        7#     :^#@@@@&            
+           G@@@@@@@@@@@@@@@@@@@@@@@P GJ:        7#    :^#@@@@&            
           5@@@@@@@@@@@@@@@@@@@@@G!.  &.          &.    ~@&@@@@@7           
-         ^@@@@@@@@@@@@@@@@@@@@#      YG         55     .@@@@@@@B^          
+         ^@@@@@@@@@@@@@@@@@@@@#     YG         55     .@@@@@@@B^          
          ~@@@@@@@@@@@@@@@@@&B#G       ~P?^...^75!      .@@@@@@@@5          
          !@@@@@@@@@@@@@@@@G            B&P~!!^.      7.7@@@@@@@@?          
          J@@@@@@@@@@@@@@@@@!         .&@&            B@@@@@@@@@@.          
@@ -1715,13 +1794,18 @@ if __name__ == "__main__":
     if arguments.directory == None:
         arguments.directory = chooseFirefoxProfileDirectory()
 
-    logging.debug("\n[*] Searching Selected Profile Directory for Artifacts...")
+    logging.debug("[*] Received Firefox Profile!")
+    logging.debug("[*] Searching Selected Profile Directory for Artifacts...")
+
+    logging.debug("\n\033[1m\033[4m[*] Extracting Addons and Extensions...\033[0m\n")
 
     # Search for addons within selected firefox profile (addons.json)
     addons = findAddons(arguments.directory + "/addons.json")
 
     # Search for extensions within selected firefox profile (extensions.json).
     extensions = findExtensions(arguments.directory + "/extensions.json")
+
+    logging.debug("\n\033[1m\033[4m[*] Extracting Certificates, Cookies and Form History...\033[0m\n")
 
     # Search for certificates within selected firefox profile (cert9.db)
     certificates = findCertificates(arguments.directory + "/cert9.db")
@@ -1732,6 +1816,8 @@ if __name__ == "__main__":
     # Search for web form data within selected firefox profile (formhistory.sqlite)
     formHistory = findFormHistory(arguments.directory + "/formhistory.sqlite")
 
+    logging.debug("\n\033[1m\033[4m[*] Extracting History Items...\033[0m\n")
+
     # Search for history searches within selected firefox profile (places.sqlite)
     historySearches = findHistorySearches(arguments.directory + "/places.sqlite")
 
@@ -1741,10 +1827,14 @@ if __name__ == "__main__":
     # Search for browsing history within selected firefox profile (places.sqlite)
     browsingHistory = findBrowsingHistory(arguments.directory + "/places.sqlite")
 
+    logging.debug("\n\033[1m\033[4m[*] Extracting Active and Deleted Bookmarks...\033[0m\n")
+
     # Search for bookmarks within selected firefox profile. (places.sqlite/bookmarkbackups)
     bookmarks = findBookmarks(
         arguments.directory + "/places.sqlite", arguments.directory + "/bookmarkbackups"
     )
+
+    logging.debug("\n\033[1m\033[4m[*] Extracting and Decrypting Login Data...\033[0m\n")
 
     # Search for logins and passwords within selected firefox profile (logins.json/key4.db)
     # Inspiration from https://gist.github.com/dhondta/2e4946f791e5860bdb588d452b5b1570#file-firefox_decrypt_modified-py
@@ -1753,11 +1843,12 @@ if __name__ == "__main__":
         arguments.directory + "/key4.db",
     )
 
-    print("[*] Shutting Down...")
+    # Create the FoxHunter object to analyse data.
+    foxHunter = FoxHunter(addons, extensions, certificates, cookies, formHistory, historySearches, downloadHistory, browsingHistory, bookmarks, logins)
+    
+    print("\n[*] Shutting Down...")
 
-# TODO: Certificates
-# TODO: Sort out Debug/Info
-# TODO: Sort out Menu Formatting
-# TODO: Relative Paths & Check File vs Directory
-# TODO: Dump Directory + Output to CSV, JSON
-# TODO: Analysis Mode
+# Certificates
+# Relative Paths & Check File vs Directory
+# Dump Directory + Output to CSV, JSON
+# Analysis Mode
