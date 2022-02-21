@@ -29,7 +29,7 @@ To verify that dependencies have been installed correctly, run FoxHunter.
 
 `python3 foxhunter.py -h`
 
-## ⚙️ Commands & Options
+## 🦊 Commands & Options
 
 
 ## ⚖️ License
