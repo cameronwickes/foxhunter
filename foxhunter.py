@@ -1633,6 +1633,28 @@ def dumpData(foxHunter, type, directory):
     if not foxHunter.findAvailable():
         logging.error("[!] No Data Gathered From FoxHunter.")
         sys.exit(1)
+        
+    # Dump certificates first.
+    availableList = foxHunter.findAvailable()
+
+    if "certificates" in [f[0] for f in availableList]:
+        # Get the list of certificates.
+        certificateList = [f[1] for f in availableList if f[0] == "certificates"][0]
+        # Create the certificate directory.
+        certDirectory = os.path.join(directory, "certificates")
+        isExist = os.path.exists(certDirectory)
+        if not isExist:
+            os.makedirs(certDirectory)
+
+        # Loop through certificates, dump the bytes in the specified filename.
+        for certificate in certificateList:
+            with open(os.path.join(directory, certificate.path), "wb") as certFile:
+                certFile.write(pem.armor("CERTIFICATE", certificate.cert))
+            certificate.cert = 1
+        else:
+            logging.debug(
+                "[^] Successfully Dumped Certificate Files to 'certificates/'"
+            )
 
     # Loop through all gathered datasets one by one
     for attribute, values in foxHunter.findAvailable():
@@ -1675,6 +1697,7 @@ def dumpData(foxHunter, type, directory):
                 with open(
                     os.path.join(directory, filename), "w+", newline=""
                 ) as jsonFile:
+                    
                     jsonString = json.dumps([object.__dict__ for object in values])
                     jsonFile.write(jsonString)
 
@@ -1714,28 +1737,7 @@ def dumpData(foxHunter, type, directory):
                     )
                 )
 
-    # Dump certificates first.
-    availableList = foxHunter.findAvailable()
-
-    if "certificates" in [f[0] for f in availableList]:
-        # Get the list of certificates.
-        certificateList = [f[1] for f in availableList if f[0] == "certificates"][0]
-        # Create the certificate directory.
-        certDirectory = os.path.join(directory, "certificates")
-        isExist = os.path.exists(certDirectory)
-        if not isExist:
-            os.makedirs(certDirectory)
-
-        # Loop through certificates, dump the bytes in the specified filename.
-        for certificate in certificateList:
-            with open(os.path.join(directory, certificate.path), "wb") as certFile:
-                certFile.write(pem.armor("CERTIFICATE", certificate.cert))
-        else:
-            logging.debug(
-                "[^] Successfully Dumped Certificate Files to 'certificates/'"
-            )
-
-    logging.info("[^] Data Dump Complete!")
+    logging.debug("[^] Data Dump Complete!")
 
 
 if __name__ == "__main__":
