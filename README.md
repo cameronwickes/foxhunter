@@ -19,13 +19,15 @@ FoxHunter extracts and dumps:
 <li>Bookmarks (Active & Deleted)</li>
 <li>Browsing History</li>
 <li>Browsing History Searches</li>
-<li>Certificates (Trusted X509)</li>
+<li>Certificates (x509)</li>
 <li>Cookies</li>
 <li>Downloads</li>
 <li>Extensions</li>
 <li>Form History</li>
 <li>Saved Logins (Encrypted)</li>
 </ul>
+
+<br/>
 
 FoxHunter allows users to decrypt extracted logins through:
 <ul>
