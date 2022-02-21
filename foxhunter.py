@@ -14,6 +14,7 @@ from urllib import parse
 import lz4.block as lz4
 from datetime import datetime
 import xml.etree.cElementTree as ET
+from asn1crypto import pem, x509
 
 
 class Addon:
@@ -58,30 +59,6 @@ class Addon:
         self.screenshots = screenshots
         self.rating = rating
 
-    def getName(self):
-        """Returns the name attribute of the addon."""
-        return self.getName
-
-    def getVersion(self):
-        """Returns the version attribute of the addon."""
-        return self.getVersion
-
-    def getURL(self):
-        """Returns the URL attribute of the addon."""
-        return self.URL
-
-    def getDownloads(self):
-        """Returns the downloads attribute of the addon."""
-        return self.downloads
-
-    def getScreenshots(self):
-        """Returns the screenshots attribute of the addon."""
-        return self.screenshots
-
-    def getRating(self):
-        """Returns the rating attribute of the addon."""
-        return self.rating
-
 
 class Extension:
     """
@@ -110,18 +87,6 @@ class Extension:
         self.URL = URL
         self.permissions = permissions
 
-    def getName(self):
-        """Returns the name attribute of the extension."""
-        return self.getName
-
-    def getURL(self):
-        """Returns the URL attribute of the extension."""
-        return self.URL
-
-    def getPermissions(self):
-        """Returns the permissions attribute of the extension."""
-        return self.permissions
-
 
 class Certificate:
     """
@@ -130,28 +95,67 @@ class Certificate:
 
     def __init__(
         self,
-        authority,
+        version,
+        serial,
+        signatureAlgo,
+        issuer,
+        validFrom,
+        validUntil,
+        subject,
+        subjectKeyAlgorithm,
+        extensions,
         cert,
     ):
         """
         Parameters
         ----------
-        authority : str
-        Nickname for the certificate.
+        version : int
+        Version number.
+
+        serial : str
+        Serial number.
+
+        signatureAlgo : str
+        Hashing algorithm used to sign certificate.
+
+        issuer : str
+        Issuing authority.
+
+        validFrom : str (date)
+        Date certificate is valid from.
+
+        validUntil : str (date)
+        Date certificate is valid until.
+
+        subject : str
+        Certificate subject.
+
+        subjectKeyAlgorithm : str
+        Public key algorithm.
+
+        extensions : [str]
+        X509 extensions related to certificate.
 
         cert : bytes
         The certificate.
         """
-        self.authority = authority
+        self.version = version
+        self.serial = serial
+        self.signatureAlgo = signatureAlgo
+        self.issuer = issuer
+        self.validFrom = validFrom
+        self.validUntil = validUntil
+        self.subject = subject
+        self.subjectKeyAlgorithm = subjectKeyAlgorithm
+        self.extensions = extensions
         self.cert = cert
 
-    def getAuthority(self):
-        """Returns the authority attribute of the certificate."""
-        return self.authority()
+        self.calculateCertificatePath()
 
-    def getCert(self):
-        """Returns the certificate attribute of the certificate."""
-        return self.cert
+    def calculateCertificatePath(self):
+        self.path = "certificates/{}-{}.pem".format(
+            self.subject.split(": ")[1].split(",")[0].replace(" ", "-"), self.serial
+        )
 
 
 class Cookie:
@@ -211,42 +215,6 @@ class Cookie:
         self.httpOnly = httpOnly
         self.sameSite = sameSite
 
-    def getHost(self):
-        """Returns the host attribute of the cookie."""
-        return self.host
-
-    def getName(self):
-        """Returns the name attribute of the cookie."""
-        return self.name
-
-    def getValue(self):
-        """Returns the value attribute of the cookie."""
-        return self.value
-
-    def getExpiry(self):
-        """Returns the expiry attribute of the cookie."""
-        return self.expiry
-
-    def getLastAccessed(self):
-        """Returns the lastAccessed attribute of the cookie."""
-        return self.lastAccessed
-
-    def getCreationTime(self):
-        """Returns the creationTime attribute of the cookie."""
-        return self.getCreationTime
-
-    def getSecure(self):
-        """Returns the secure attribute of the cookie."""
-        return self.secure
-
-    def getHTTPOnly(self):
-        """Returns the httpOnly attribute of the cookie."""
-        return self.httpOnly
-
-    def getSameSite(self):
-        """Returns the sameSite attribute of the cookie."""
-        return self.sameSite
-
 
 class FormField:
     """
@@ -275,18 +243,6 @@ class FormField:
         self.value = value
         self.useCount = useCount
 
-    def getName(self):
-        """Returns the name attribute of the form history."""
-        return self.name
-
-    def getValue(self):
-        """Returns the value attribute of the form history."""
-        return self.value
-
-    def getUseCount(self):
-        """Returns the useCount attribute of the form history."""
-        return self.useCount
-
 
 class HistorySearch:
     """
@@ -309,14 +265,6 @@ class HistorySearch:
         """
         self.query = query
         self.useFrequency = useFrequency
-
-    def getQuery(self):
-        """Returns the query attribute of the history search."""
-        return self.query
-
-    def getUseFrequency(self):
-        """Returns the useFrequency attribute of the history search."""
-        return self.useFrequency
 
 
 class Download:
@@ -345,18 +293,6 @@ class Download:
         self.date = date
         self.downloadPath = downloadPath
         self.URL = URL
-
-    def getDate(self):
-        """Returns the date attribute of the download."""
-        return self.date
-
-    def getDownloadPath(self):
-        """Returns the downloadPath attribute of the download."""
-        return self.downloadPath
-
-    def getURL(self):
-        """Returns the URL attribute of the download."""
-        return self.URL
 
 
 class Browse:
@@ -405,26 +341,6 @@ class Browse:
         self.visitType = visitType
         self.visitCount = visitCount
 
-    def getDate(self):
-        """Returns the date attribute of the browsing history entry."""
-        return self.date
-
-    def getURL(self):
-        """Returns the URL attribute of the browsing history entry."""
-        return self.URL
-
-    def getTitle(self):
-        """Returns the title attribute of the browsing history entry."""
-        return self.title
-
-    def getVisitType(self):
-        """Returns the visitType attribute of the browsing history entry."""
-        return self.visitType
-
-    def getVisitCount(self):
-        """Returns the visitCount attribute of the browsing history entry."""
-        return self.visitCount
-
 
 class Bookmark:
     """
@@ -458,22 +374,6 @@ class Bookmark:
         self.title = title
         self.active = active
 
-    def getDateAdded(self):
-        """Returns the dateAdded attribute of the bookmark."""
-        return self.dateAdded
-
-    def getURL(self):
-        """Returns the URL attribute of the bookmark."""
-        return self.URL
-
-    def getTitle(self):
-        """Returns the title attribute of the bookmark."""
-        return self.title
-
-    def getActive(self):
-        """Returns the active attribute of the bookmark."""
-        return self.active
-
 
 class LoginDecrypter:
     """
@@ -499,7 +399,7 @@ class LoginDecrypter:
     def __init__(self):
         # Load the LibNSS library.
         self.NSS = None
-        self.decryptionAvailable = True
+        self._decryptionAvailable = True
         self.loadLibNSS()
 
         # Create the pointers to required structures.
@@ -525,11 +425,11 @@ class LoginDecrypter:
 
     def setDecryptionStatus(self, status):
         """Sets the decryptionAvailiable attribute to the status argument."""
-        self.decryptionAvailable = status
+        self._decryptionAvailable = status
 
     def getDecryptionStatus(self):
         """Returns the decryptionAvailable attribute of the LoginDecrypter."""
-        return self.decryptionAvailable
+        return self._decryptionAvailable
 
     def setCTypes(self, name, returnType, *inputTypes):
         """
@@ -580,7 +480,7 @@ class LoginDecrypter:
         # Set decryptionAvailable to False if NSS library is not on the system.
         if self.NSS == None:
             logging.error("[!] Couldn't find NSS Library on System. Exiting...")
-            self.decryptionAvailable = False
+            self._decryptionAvailable = False
 
     def decode(self, base64Data):
         """
@@ -596,7 +496,7 @@ class LoginDecrypter:
         decryptedData : str/None
         Successfully decrypted data, or None.
         """
-        if self.decryptionAvailable:
+        if self._decryptionAvailable:
             # Base64 decode the password.
             decodedData = b64decode(base64Data)
 
@@ -645,14 +545,6 @@ class LoginData:
 
         # Create the NSS decrypter.
         self.decrypter = LoginDecrypter()
-
-    def addLogin(self, login):
-        """Adds a specified login to the list of logins."""
-        self.logins.append(login)
-
-    def getLogins(self):
-        """Returns all logins."""
-        return self.logins
 
     def initialiseProfile(self):
         """Initialises the NSS decrypter with the specified user profile."""
@@ -805,12 +697,9 @@ class LoginData:
     def decryptLogins(self):
         """Decrypt all logins using the authenticated NSS decrypter."""
         for login in self.logins:
-            # Fetch and decode the encrypted usernames and passwords from the login objects.
-            username = self.decrypter.decode(login.getEncryptedUsername())
-            password = self.decrypter.decode(login.getEncryptedPassword())
             # Set the decrypted usernames and passwords in the login objects.
-            login.setUsername(username)
-            login.setPassword(password)
+            login.username = self.decrypter.decode(login.encryptedUsername)
+            login.password = self.decrypter.decode(login.encryptedPassword)
 
     def deactivateProfile(self):
         """Deactivate the NSS profile and library once finished."""
@@ -846,34 +735,6 @@ class Login:
         # Set the decrypted usernames and passwords to none until decrypted.
         self.username = None
         self.password = None
-
-    def getHost(self):
-        """Returns the host attribute of the login object."""
-        return self.host
-
-    def getEncryptedUsername(self):
-        """Returns the encryptedUsername attribute of the login object."""
-        return self.encryptedUsername
-
-    def getEncryptedPassword(self):
-        """Returns the encryptedPassword attribute of the login object."""
-        return self.encryptedPassword
-
-    def getUsername(self):
-        """Returns the username attribute of the login object."""
-        return self.username
-
-    def getPassword(self):
-        """Returns the password attribute of the login object."""
-        return self.password
-
-    def setUsername(self, username):
-        """Sets the decrypted username to the specified argument. Should be called from LoginData class only."""
-        self.username = username
-
-    def setPassword(self, password):
-        """Sets the decrypted password to the specified argument. Should be called from LoginData class only."""
-        self.password = password
 
 
 class FoxHunter:
@@ -1180,13 +1041,37 @@ def findCertificates(certificatesPath):
         databaseCursor = databaseConnection.cursor()
 
         # Extract the certificate fields from the nssPublic table.
-        for extractedCert in databaseCursor.execute("SELECT * FROM nssPublic"):
+        for extractedCert in databaseCursor.execute("SELECT a11 FROM nssPublic"):
             try:
-                # Filter out None's from tuples where no data is present in column.
-                filteredCertificate = list(filter(None, list(extractedCert)))
+
                 # Gather certificate nickname from extracted data.
-                nickname = filteredCertificate[4].decode("utf-8")
-                # print(filteredCertificate[5:])
+                cert = x509.Certificate.load(extractedCert[0])
+                version = cert.native["tbs_certificate"]["version"]
+                serial = cert.native["tbs_certificate"]["serial_number"]
+                signatureAlgo = cert.native["tbs_certificate"]["signature"]["algorithm"]
+                issuer = cert.issuer.human_friendly
+                validFrom = cert.not_valid_before.strftime("%Y-%m-%d %H:%M:%S")
+                validUntil = cert.not_valid_after.strftime("%Y-%m-%d %H:%M:%S")
+                subject = cert.subject.human_friendly
+                subjectKeyAlgorithm = cert.public_key.algorithm
+                extensions = [
+                    x["extn_id"] for x in cert.native["tbs_certificate"]["extensions"]
+                ]
+
+                # Create the certificate object from parameters.
+                certificateObject = Certificate(
+                    version=version,
+                    serial=serial,
+                    signatureAlgo=signatureAlgo,
+                    issuer=issuer,
+                    validFrom=validFrom,
+                    validUntil=validUntil,
+                    subject=subject,
+                    subjectKeyAlgorithm=subjectKeyAlgorithm,
+                    extensions=extensions,
+                    cert=extractedCert[0],
+                )
+                certificatesList.append(certificateObject)
             except:
                 continue
 
@@ -1557,7 +1442,7 @@ def findBookmarks(bookmarksPath, bookmarksFolder):
                 )
                 for childBookmark in childBookmarks:
                     # Check if bookmark has been deleted. Add it to the bookmarks list if it has.
-                    if childBookmark["uri"] not in [x.getURL() for x in bookmarksList]:
+                    if childBookmark["uri"] not in [x.URL for x in bookmarksList]:
                         bookmarkObject = Bookmark(
                             dateAdded=datetime.utcfromtimestamp(
                                 float(childBookmark["dateAdded"] / 1000000)
@@ -1620,7 +1505,7 @@ def findLoginData(loginPath, keyPath):
             encryptedUsername=login["encryptedUsername"],
             encryptedPassword=login["encryptedPassword"],
         )
-        loginData.addLogin(loginObject)
+        loginData.logins.append(loginObject)
 
     logging.debug("[^] Successfully Gathered Encrypted Logins From 'logins.json'")
 
@@ -1639,7 +1524,7 @@ def findLoginData(loginPath, keyPath):
                 )
                 loginData.decryptLogins()
                 loginData.deactivateProfile()
-            return loginData.getLogins()
+            return loginData.logins
 
         # Blank authentication failed, password in use.
         elif blankResult == False:
@@ -1680,7 +1565,7 @@ def findLoginData(loginPath, keyPath):
                             )
                             loginData.decryptLogins()
                             loginData.deactivateProfile()
-                        return loginData.getLogins()
+                        return loginData.logins
                     # Notify the user of incorrect password.
                     elif passwordResult == False:
                         logging.error("[!] Wrong Master Password.")
@@ -1719,14 +1604,14 @@ def findLoginData(loginPath, keyPath):
                                 )
                                 loginData.decryptLogins()
                                 loginData.deactivateProfile()
-                            return loginData.getLogins()
+                            return loginData.logins
 
                     # Wordlist not found!
                     else:
                         logging.error(
                             "[!] No Such File or Directory {}".format(dictionary)
                         )
-            return loginData.getLogins()
+            return loginData.logins
 
 
 def dumpData(foxHunter, type, directory):
@@ -1828,6 +1713,27 @@ def dumpData(foxHunter, type, directory):
                         printableAttribute, filename
                     )
                 )
+
+    # Dump certificates first.
+    availableList = foxHunter.findAvailable()
+
+    if "certificates" in [f[0] for f in availableList]:
+        # Get the list of certificates.
+        certificateList = [f[1] for f in availableList if f[0] == "certificates"][0]
+        # Create the certificate directory.
+        certDirectory = os.path.join(directory, "certificates")
+        isExist = os.path.exists(certDirectory)
+        if not isExist:
+            os.makedirs(certDirectory)
+
+        # Loop through certificates, dump the bytes in the specified filename.
+        for certificate in certificateList:
+            with open(os.path.join(directory, certificate.path), "wb") as certFile:
+                certFile.write(pem.armor("CERTIFICATE", certificate.cert))
+        else:
+            logging.debug(
+                "[^] Successfully Dumped Certificate Files to 'certificates/'"
+            )
 
     logging.info("[^] Data Dump Complete!")
 
@@ -2012,6 +1918,5 @@ if __name__ == "__main__":
 
     print("\n[*] Shutting Down...")
 
-# Certificates
 # Relative Paths & Check File vs Directory
 # Analysis Mode
