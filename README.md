@@ -2,7 +2,6 @@
   <img alt="foxhunter logo" src="https://raw.githubusercontent.com/cameronwickes/foxhunter/main/logo.png" width="224px"/><br/>
   FoxHunter
 </h1>
-<p align="center">A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping</b> Firefox browser artifacts on Linux platforms for forensic purposes. Enjoy the powers of automation!</p>
 
 <p align="center">
 <img alt="Supported Platforms" src="https://img.shields.io/badge/Platform-Linux-blueviolet?color=blue&style=for-the-badge">
@@ -10,6 +9,32 @@
 <img alt="GitHub file size in bytes" src="https://img.shields.io/github/size/cameronwickes/foxhunter/foxhunter.py?color=brightgreen&style=for-the-badge">
 <img alt="License" src="https://img.shields.io/github/license/cameronwickes/foxhunter?color=blue&style=for-the-badge">
 </p>
+
+<p align="center">
+A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping</b> Firefox browser artifacts on Linux platforms for forensic purposes. 
+
+FoxHunter extracts and dumps:
+<ul>
+<li>Addons</li>
+<li>Bookmarks (Active & Deleted)</li>
+<li>Browsing History</li>
+<li>Browsing History Searches</li>
+<li>Certificates (Trusted X509)</li>
+<li>Cookies</li>
+<li>Downloads</li>
+<li>Extensions</li>
+<li>Form History</li>
+<li>Saved Logins (Encrypted)</li>
+</ul>
+
+FoxHunter allows users to decrypt extracted logins through:
+<ul>
+<li>Anonymous Authentication (Blank Password)</li>
+<li>Password Authentication (Known Factor)</li>
+<li>Brute Force Authentication (Wordlist/Dictionary Attack)</li>
+</ul>
+</p>
+<br/>
 
 ## ⚡️ Quick start
 
