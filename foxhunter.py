@@ -815,7 +815,6 @@ class FoxHunter:
         ]
 
         self.analysedAvailable = []
-        
 
     def findAvailable(self):
         """Returns the list of set attributes."""
@@ -838,7 +837,11 @@ class FoxHunter:
         3. Finds out-of-date addons - potential security risk.
         """
 
-        self.analysedAddons = {"Non Mozilla Install": [], "Low User Ratings": [], "Out Of Date": []}
+        self.analysedAddons = {
+            "Non Mozilla Install": [],
+            "Low User Ratings": [],
+            "Out Of Date": [],
+        }
 
         for addon in self.addons:
             # Check for addons not installed through Mozilla.
@@ -889,7 +892,7 @@ class FoxHunter:
                 if permission in extension.permissions:
                     self.analysedExtensions["Interesting Permissions"].append(extension)
                     break
-        
+
         self.analysedAvailable.append(["analysedExtensions", self.analysedExtensions])
 
     def analyseCertificates(self):
@@ -1078,7 +1081,9 @@ class FoxHunter:
             if issuer not in commonIssuers:
                 self.analysedCertificates["Uncommon Issuer"].append(certificate)
 
-        self.analysedAvailable.append(["analysedCertificates", self.analysedCertificates])
+        self.analysedAvailable.append(
+            ["analysedCertificates", self.analysedCertificates]
+        )
 
     def analyse(self):
         """Perform analysis on gathered data."""
@@ -2024,7 +2029,6 @@ def findAnalysedKeys(dictionary):
             return dictionary[key][0].__dict__.keys()
 
 
-
 def dumpAnalysed(foxHunter, type, directory):
     """
     Dumps analysed Firefox data to various file formats.
@@ -2072,7 +2076,7 @@ def dumpAnalysed(foxHunter, type, directory):
                     for item in values:
                         for object in values[item]:
                             writer.writerow([item] + list(object.__dict__.values()))
-                
+
             except BaseException:
                 logging.error(
                     "[!] Failed to Dump {} to '{}'".format(printableAttribute, filename)
@@ -2113,7 +2117,9 @@ def dumpAnalysed(foxHunter, type, directory):
                 # Create the XML tree.
                 root = ET.Element(attribute)
                 for item in values:
-                    sub = ET.SubElement(root, item[0].lower() + item[1:].replace(" ", ""))
+                    sub = ET.SubElement(
+                        root, item[0].lower() + item[1:].replace(" ", "")
+                    )
                     for object in values[item]:
                         sub2 = ET.SubElement(sub, object.__class__.__name__.lower())
                         for key in object.__dict__.keys():
@@ -2133,6 +2139,7 @@ def dumpAnalysed(foxHunter, type, directory):
                         printableAttribute, filename
                     )
                 )
+
 
 if __name__ == "__main__":
 
