@@ -40,7 +40,7 @@ A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping
 
 <br/>
 
-<b>Finally, FoxHunter performs analysis on gathered artifacts:/b>
+<b>Finally, FoxHunter performs analysis on gathered artifacts:</b>
 <ol>
 <li>Identifies addons not installed through Mozilla store.</li>
 <li>Identifies addons with low download rates and/or ratings.</li>
