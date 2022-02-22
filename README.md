@@ -13,7 +13,7 @@
 <p align="center">
 A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping</b> Firefox browser artifacts on Linux platforms for forensic purposes. 
 
-<br/><br/>
+<br/>
 
 FoxHunter extracts and dumps:
 <ul>
