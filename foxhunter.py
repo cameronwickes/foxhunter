@@ -103,12 +103,13 @@ class Certificate:
         self,
         version,
         serial,
-        signatureAlgo,
+        hashAlgo,
         issuer,
         validFrom,
         validUntil,
         subject,
         subjectKeyAlgorithm,
+        subjectKeyBitSize,
         extensions,
         cert,
     ):
@@ -121,8 +122,8 @@ class Certificate:
         serial : str
         Serial number.
 
-        signatureAlgo : str
-        Hashing algorithm used to sign certificate.
+        hashAlgo : str
+        Hashing algorithm used for certificate.
 
         issuer : str
         Issuing authority.
@@ -139,6 +140,9 @@ class Certificate:
         subjectKeyAlgorithm : str
         Public key algorithm.
 
+        subjectKeyBitSize : int
+        Public key bit size.
+
         extensions : [str]
         X509 extensions related to certificate.
 
@@ -147,12 +151,13 @@ class Certificate:
         """
         self.version = version
         self.serial = serial
-        self.signatureAlgo = signatureAlgo
+        self.hashAlgo = hashAlgo
         self.issuer = issuer
         self.validFrom = validFrom
         self.validUntil = validUntil
         self.subject = subject
         self.subjectKeyAlgorithm = subjectKeyAlgorithm
+        self.subjectKeyBitSize = subjectKeyBitSize
         self.extensions = extensions
         self.cert = cert
 
@@ -843,6 +848,7 @@ class FoxHunter:
             "Out Of Date": [],
         }
 
+        internetCheck = True
         for addon in self.addons:
             # Check for addons not installed through Mozilla.
             if "addons.mozilla.org" not in addon.URL:
@@ -853,14 +859,19 @@ class FoxHunter:
                 self.analysedAddons["Low User Ratings"].append(addon)
 
             # Check for out of date addons.
-            uf = request.urlopen(addon.storeURL)
-            storeVersion = re.findall(
-                r"\"version\":\"([0-9,.]*)", uf.read().decode("utf-8")
-            )[0]
-            if self.convertedVersion(addon.version) < self.convertedVersion(
-                storeVersion
-            ):
-                self.analysedAddons["Out Of Date"].append(addon)
+            try:
+                if internetCheck:
+                    uf = request.urlopen(addon.storeURL)
+                    storeVersion = re.findall(
+                        r"\"version\":\"([0-9,.]*)", uf.read().decode("utf-8")
+                    )[0]
+                    if self.convertedVersion(addon.version) < self.convertedVersion(
+                        storeVersion
+                    ):
+                        self.analysedAddons["Out Of Date"].append(addon)
+            except:
+                logging.error("[!] No Internet Connection. Skipping Addon Version Checks...")
+                internetCheck = False
 
         self.analysedAvailable.append(["analysedAddons", self.analysedAddons])
 
@@ -1081,6 +1092,14 @@ class FoxHunter:
             if issuer not in commonIssuers:
                 self.analysedCertificates["Uncommon Issuer"].append(certificate)
 
+            # Check for RSA less than 2048.
+            if certificate.subjectKeyAlgorithm == "rsa" and certificate.subjectKeyBitSize < 2048:
+                self.analysedCertificates["Weak Encryption"].append(certificate)
+
+            # Check for SHA1, MD5 or MD2 hashes.
+            if certificate.hashAlgo in ["md2", "md5", "sha1"]:
+                self.analysedCertificates["Weak Encryption"].append(certificate)
+
         self.analysedAvailable.append(
             ["analysedCertificates", self.analysedCertificates]
         )
@@ -1091,10 +1110,13 @@ class FoxHunter:
         # Analyse data.
         logging.debug("[*] Attempting to Analyse Addons...")
         self.analyseAddons()
+        logging.debug("[^] Finished Analysis of Addons!\n")
         logging.debug("[*] Attempting to Analyse Extensions...")
         self.analyseExtensions()
+        logging.debug("[^] Finished Analysis of Extensions!\n")
         logging.debug("[*] Attempting to Analyse Certificates...")
         self.analyseCertificates()
+        logging.debug("[^] Finished Analysis of Certificates!\n")
 
 
 def directoryPath(dir):
@@ -1333,12 +1355,13 @@ def findCertificates(certificatesPath):
                 cert = x509.Certificate.load(extractedCert[0])
                 version = cert.native["tbs_certificate"]["version"]
                 serial = cert.native["tbs_certificate"]["serial_number"]
-                signatureAlgo = cert.native["tbs_certificate"]["signature"]["algorithm"]
+                hashAlgo = cert.hash_algo
                 issuer = cert.issuer.human_friendly
                 validFrom = cert.not_valid_before.strftime("%Y-%m-%d %H:%M:%S")
                 validUntil = cert.not_valid_after.strftime("%Y-%m-%d %H:%M:%S")
                 subject = cert.subject.human_friendly
                 subjectKeyAlgorithm = cert.public_key.algorithm
+                subjectKeyBitSize = cert.public_key.bit_size
                 extensions = [
                     x["extn_id"] for x in cert.native["tbs_certificate"]["extensions"]
                 ]
@@ -1347,12 +1370,13 @@ def findCertificates(certificatesPath):
                 certificateObject = Certificate(
                     version=version,
                     serial=serial,
-                    signatureAlgo=signatureAlgo,
+                    hashAlgo=hashAlgo,
                     issuer=issuer,
                     validFrom=validFrom,
                     validUntil=validUntil,
                     subject=subject,
                     subjectKeyAlgorithm=subjectKeyAlgorithm,
+                    subjectKeyBitSize=subjectKeyBitSize,
                     extensions=extensions,
                     cert=extractedCert[0],
                 )
@@ -2044,6 +2068,10 @@ def dumpAnalysed(foxHunter, type, directory):
     directory : str
     Path to store dumped data.
     """
+    
+    # Add newline for clarity.
+    logging.debug("")
+
     # Check for lack of data to dump.
     if not foxHunter.findAnalysedAvailable():
         logging.error("[!] No Analysed Data Available From FoxHunter.")
@@ -2052,7 +2080,7 @@ def dumpAnalysed(foxHunter, type, directory):
     # Dump certificates first.
     availableList = foxHunter.findAnalysedAvailable()
 
-    # Loop through all gathered datasets one by one
+    # Loop through all gathered datasets one by one.
     for attribute, values in availableList:
 
         # Create a printable version of the attribute.
@@ -2345,4 +2373,3 @@ if __name__ == "__main__":
     print("\n[*] Shutting Down...")
 
 # Relative Paths & Check File vs Directory
-# Finish Certificate Checking
