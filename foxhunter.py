@@ -839,7 +839,7 @@ class FoxHunter:
 
         1. Finds addons not installed through Mozilla store.
         2. Finds addons with low download rates and/or ratings.
-        3. Finds out-of-date addons - potential security risk.
+        3. Finds out-of-date addons - potential security risks.
         """
 
         self.analysedAddons = {
