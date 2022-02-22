@@ -41,7 +41,7 @@ A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping
 <br/>
 
 <b>Finally, FoxHunter performs analysis on gathered artifacts:</b>
-<ol>
+<ul>
 <li>Identifies addons not installed through Mozilla store.</li>
 <li>Identifies addons with low download rates and/or ratings.</li>
 <li>Identifies out-of-date addons - potential security risks.</li>
@@ -60,7 +60,7 @@ A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping
 <li>Identifies the 5 most common browsing history searches.</li>
 <li>Produces graphs of browser usage over time.</li>
 <li>Produces graphs of site browsing habits.</li>
-</ol>
+</ul>
 
 </p>
 <br/>
