@@ -1938,11 +1938,15 @@ def dumpData(foxHunter, type, directory):
     directory : str
     Path to store dumped data.
     """
+
+    # Add newline for clarity.
+    logging.debug("")
+
     # Check for lack of data to dump.
     if not foxHunter.findAvailable():
         logging.error("[!] No Data Gathered From FoxHunter.")
         sys.exit(1)
-
+    
     # Dump certificates first.
     availableList = foxHunter.findAvailable()
 
@@ -1957,9 +1961,10 @@ def dumpData(foxHunter, type, directory):
 
         # Loop through certificates, dump the bytes in the specified filename.
         for certificate in certificateList:
-            with open(os.path.join(directory, certificate.path), "wb") as certFile:
-                certFile.write(pem.armor("CERTIFICATE", certificate.cert))
-            certificate.cert = 1
+            if certificate.cert != 1:
+                with open(os.path.join(directory, certificate.path), "wb") as certFile:
+                    certFile.write(pem.armor("CERTIFICATE", certificate.cert))
+                certificate.cert = 1
         else:
             logging.debug(
                 "[^] Successfully Dumped Certificate Files to 'certificates/'"
@@ -2341,18 +2346,18 @@ if __name__ == "__main__":
 
     # Print message if appropriate.
     if arguments.output_csv or arguments.output_json or arguments.output_xml:
-        logging.debug("\n\033[1m\033[4m[*] Dumping Gathered Data...\033[0m\n")
+        logging.debug("\n\033[1m\033[4m[*] Dumping Gathered Data...\033[0m")
 
     # Check the input arguments for correct formatting.
     if arguments.output_csv:
         dumpData(foxHunter, "csv", arguments.output_csv)
         if arguments.analyse:
             dumpAnalysed(foxHunter, "csv", arguments.output_csv)
-    elif arguments.output_json:
+    if arguments.output_json:
         dumpData(foxHunter, "json", arguments.output_json)
         if arguments.analyse:
             dumpAnalysed(foxHunter, "json", arguments.output_json)
-    elif arguments.output_xml:
+    if arguments.output_xml:
         dumpData(foxHunter, "xml", arguments.output_xml)
         if arguments.analyse:
             dumpAnalysed(foxHunter, "xml", arguments.output_xml)
