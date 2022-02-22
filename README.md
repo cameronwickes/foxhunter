@@ -39,34 +39,15 @@ FoxHunter allows users to decrypt extracted logins through:
 <br/>
 
 Finally, FoxHunter performs analysis on gathered artifacts:
-<br/><br/>
-<b>Addons</b>
 <ol>
 <li>Identifies addons not installed through Mozilla store.</li>
 <li>Identifies addons with low download rates and/or ratings.</li>
 <li>Identifies out-of-date addons - potential security risks.</li>
-</ol>
-
-<b>Extensions</b>
-<ol>
 <li>Identifies extensions with interesting/abnormal permissions.</li>
-</ol>
-
-<b>Certificates</b>
-<ol>
 <li>Identifies certificates from relatively unknown issuers.</li>
 <li>Identifies certificates with weak/unrecommended encryption standards.</li>
 </ol>
 
-<b>Extensions</b>
-<ol>
-<li>Identifies extensions with interesting/abnormal permissions.</li>
-</ol>
-
-<b>Extensions</b>
-<ol>
-<li>Identifies extensions with interesting/abnormal permissions.</li>
-</ol>
 </p>
 <br/>
 
