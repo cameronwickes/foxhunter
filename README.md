@@ -31,7 +31,7 @@ A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping
 
 <br/>
 
-FoxHunter allows users to decrypt extracted logins through:
+<b>FoxHunter allows users to decrypt extracted logins through:</b>
 <ul>
 <li>Anonymous Authentication (Blank Password)</li>
 <li>Password Authentication (Known Factor)</li>
@@ -40,7 +40,7 @@ FoxHunter allows users to decrypt extracted logins through:
 
 <br/>
 
-Finally, FoxHunter performs analysis on gathered artifacts:
+<b>Finally, FoxHunter performs analysis on gathered artifacts:/b>
 <ol>
 <li>Identifies addons not installed through Mozilla store.</li>
 <li>Identifies addons with low download rates and/or ratings.</li>
