@@ -15,7 +15,7 @@ A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping
 </p>
 <br/>
 <p>
-FoxHunter extracts and dumps:
+<b>FoxHunter extracts and dumps:</b>
 <ul>
 <li>Addons</li>
 <li>Bookmarks (Active & Deleted)</li>
