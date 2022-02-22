@@ -85,9 +85,9 @@ To verify that dependencies have been installed correctly, run FoxHunter.
 
 By default, FoxHunter extracts artifacts from a profile, and displays statistics about gathered artifacts on the terminal.
 
-- A specific Firefox profile can be specified with the '-p' argument. If this argument is not supplied, FoxHunter will attempt to search the system for Firefox profiles, and let the user choose.
-- To dump gathered artifacts out, use either one of the '-oC', '-oJ' or '-oX' arguments to dump in CSV, JSON and XML formats respectively.
-- To perform additional analysis of artifacts, specify the '-A' argument. This requires an Internet connection.
+- A specific Firefox profile can be specified with the `-p` argument. If this argument is not supplied, FoxHunter will attempt to search the system for Firefox profiles, and let the user choose.
+- To dump gathered artifacts out, use any of the `-oC`, `-oJ` or `-oX` arguments to dump in CSV, JSON and XML formats respectively.
+- To perform additional analysis of artifacts, specify the `-A` argument. This requires an Internet connection.
 
 ```
 $ python3 foxhunter.py -h
