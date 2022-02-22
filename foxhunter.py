@@ -9,8 +9,9 @@ import os
 import json
 import sqlite3
 import ctypes
+import re
 from base64 import b64decode
-from urllib import parse
+from urllib import parse, request
 import lz4.block as lz4
 from datetime import datetime
 import xml.etree.cElementTree as ET
@@ -27,6 +28,7 @@ class Addon:
         name,
         version,
         URL,
+        storeURL,
         downloads,
         screenshots,
         rating,
@@ -43,6 +45,9 @@ class Addon:
         url : str
         URL where the addon can be downloaded.
 
+        storeURL : str
+        URL of the store page for the addon.
+
         downloads : int
         Number of weekly downloads of the addon.
 
@@ -55,6 +60,7 @@ class Addon:
         self.name = name
         self.version = version
         self.URL = URL
+        self.storeURL = storeURL
         self.downloads = downloads
         self.screenshots = screenshots
         self.rating = rating
@@ -808,9 +814,282 @@ class FoxHunter:
             if value != [] and attribute != "self"
         ]
 
+        self.analysedAvailable = []
+        
+
     def findAvailable(self):
         """Returns the list of set attributes."""
         return self.available
+
+    def findAnalysedAvailable(self):
+        """Returns the list of set analysed extensions."""
+        return self.analysedAvailable
+
+    def convertedVersion(self, version):
+        """Converts a version to tuple."""
+        return tuple(map(int, (version.split("."))))
+
+    def analyseAddons(self):
+        """
+        Performs analysis on gathered addons.
+
+        1. Finds addons not installed through Mozilla store.
+        2. Finds addons with low download rates and/or ratings.
+        3. Finds out-of-date addons - potential security risk.
+        """
+
+        self.analysedAddons = {"Non Mozilla Install": [], "Low User Ratings": [], "Out Of Date": []}
+
+        for addon in self.addons:
+            # Check for addons not installed through Mozilla.
+            if "addons.mozilla.org" not in addon.URL:
+                self.analysedAddons["Non Mozilla Install"].append(addon)
+
+            # Check for addons with low download rates/ratings.
+            if addon.rating < 2.5 or addon.downloads < 1000:
+                self.analysedAddons["Low User Ratings"].append(addon)
+
+            # Check for out of date addons.
+            uf = request.urlopen(addon.storeURL)
+            storeVersion = re.findall(
+                r"\"version\":\"([0-9,.]*)", uf.read().decode("utf-8")
+            )[0]
+            if self.convertedVersion(addon.version) < self.convertedVersion(
+                storeVersion
+            ):
+                self.analysedAddons["Out Of Date"].append(addon)
+
+        self.analysedAvailable.append(["analysedAddons", self.analysedAddons])
+
+    def analyseExtensions(self):
+        """
+        Performs analysis on gathered extensions.
+
+        1. Identifies extensions with dangerous/abnormal permissions
+        """
+
+        # Define interesting permissions
+        self.analysedExtensions = {"Interesting Permissions": []}
+        permissions = [
+            "background",
+            "browserSettings",
+            "cookies",
+            "geolocation",
+            "pageCapture",
+            "downloads.open",
+            "geolocation",
+            "pageCapture",
+            "privacy",
+            "proxy",
+        ]
+
+        # Identify extensions with said permissions and mark them.
+        for extension in self.extensions:
+            for permission in permissions:
+                if permission in extension.permissions:
+                    self.analysedExtensions["Interesting Permissions"].append(extension)
+                    break
+        
+        self.analysedAvailable.append(["analysedExtensions", self.analysedExtensions])
+
+    def analyseCertificates(self):
+        """
+        Performs analysis on gathered certificates.
+
+        1. Finds certificates from relatively unknown issuers.
+        2. Finds certificates with weak encryption standards.
+        """
+
+        self.analysedCertificates = {"Uncommon Issuer": [], "Weak Encryption": []}
+
+        # Define common issuers.
+        commonIssuers = [
+            "CN=ACCVRAIZ1,OU=PKIACCV,O=ACCV,C=ES",
+            "OU=AC RAIZ FNMT-RCM,O=FNMT-RCM,C=ES",
+            "CN=Actalis Authentication Root CA,O=Actalis S.p.A./03358520967,L=Milan,C=IT",
+            "CN=AffirmTrust Commercial,O=AffirmTrust,C=US",
+            "CN=AffirmTrust Networking,O=AffirmTrust,C=US",
+            "CN=AffirmTrust Premium,O=AffirmTrust,C=US",
+            "CN=AffirmTrust Premium ECC,O=AffirmTrust,C=US",
+            "CN=Amazon Root CA 1,O=Amazon,C=US",
+            "CN=Amazon Root CA 2,O=Amazon,C=US",
+            "CN=Amazon Root CA 3,O=Amazon,C=US",
+            "CN=Amazon Root CA 4,O=Amazon,C=US",
+            "CN=Atos TrustedRoot 2011,O=Atos,C=DE",
+            "CN=Autoridad de Certificacion Firmaprofesional CIF A62634068,C=ES",
+            "CN=Baltimore CyberTrust Root,OU=CyberTrust,O=Baltimore,C=IE",
+            "CN=Buypass Class 2 Root CA,O=Buypass AS-983163327,C=NO",
+            "CN=Buypass Class 3 Root CA,O=Buypass AS-983163327,C=NO",
+            "CN=CA Disig Root R2,O=Disig a.s.,L=Bratislava,C=SK",
+            "CN=CFCA EV ROOT,O=China Financial Certification Authority,C=CN",
+            "CN=COMODO Certification Authority,O=COMODO CA Limited,L=Salford,ST=Greater Manchester,C=GB",
+            "CN=COMODO ECC Certification Authority,O=COMODO CA Limited,L=Salford,ST=Greater Manchester,C=GB",
+            "CN=COMODO RSA Certification Authority,O=COMODO CA Limited,L=Salford,ST=Greater Manchester,C=GB",
+            "CN=Chambers of Commerce Root,OU=http://www.chambersign.org,O=AC Camerfirma SA CIF A82743287,C=EU",
+            "CN=Global Chambersign Root,OU=http://www.chambersign.org,O=AC Camerfirma SA CIF A82743287,C=EU",
+            "CN=Certigna,O=Dhimyotis,C=FR",
+            "CN=Certigna Root CA,OU=0002 48146308100036,O=Dhimyotis,C=FR",
+            "CN=Certum CA,O=Unizeto Sp. z o.o.,C=PL",
+            "CN=Certum Trusted Network CA,OU=Certum Certification Authority,O=Unizeto Technologies S.A.,C=PL",
+            "CN=Certum Trusted Network CA 2,OU=Certum Certification Authority,O=Unizeto Technologies S.A.,C=PL",
+            "CN=Chambers of Commerce Root - 2008,O=AC Camerfirma S.A.,serialNumber=A82743287,L=Madrid (see current address at www.camerfirma.com/address),C=EU",
+            "CN=AAA Certificate Services,O=Comodo CA Limited,L=Salford,ST=Greater Manchester,C=GB",
+            "CN=Cybertrust Global Root,O=Cybertrust\, Inc",
+            "CN=D-TRUST Root CA 3 2013,O=D-Trust GmbH,C=DE",
+            "CN=D-TRUST Root Class 3 CA 2 2009,O=D-Trust GmbH,C=DE",
+            "CN=D-TRUST Root Class 3 CA 2 EV 2009,O=D-Trust GmbH,C=DE",
+            "CN=DST Root CA X3,O=Digital Signature Trust Co.",
+            "CN=DigiCert Assured ID Root CA,OU=www.digicert.com,O=DigiCert Inc,C=US",
+            "CN=DigiCert Assured ID Root G2,OU=www.digicert.com,O=DigiCert Inc,C=US",
+            "CN=DigiCert Assured ID Root G3,OU=www.digicert.com,O=DigiCert Inc,C=US",
+            "CN=DigiCert Global Root CA,OU=www.digicert.com,O=DigiCert Inc,C=US",
+            "CN=DigiCert Global Root G2,OU=www.digicert.com,O=DigiCert Inc,C=US",
+            "CN=DigiCert Global Root G3,OU=www.digicert.com,O=DigiCert Inc,C=US",
+            "CN=DigiCert High Assurance EV Root CA,OU=www.digicert.com,O=DigiCert Inc,C=US",
+            "CN=DigiCert Trusted Root G4,OU=www.digicert.com,O=DigiCert Inc,C=US",
+            "CN=E-Tugra Certification Authority,OU=E-Tugra Sertifikasyon Merkezi,O=E-Tu\C4\9Fra EBG Bili\C5\9Fim Teknolojileri ve Hizmetleri A.\C5\9E.,L=Ankara,C=TR",
+            "CN=EC-ACC,OU=Jerarquia Entitats de Certificacio Catalanes,OU=Vegeu https://www.catcert.net/verarrel (c)03,OU=Serveis Publics de Certificacio,O=Agencia Catalana de Certificacio (NIF Q-0801176-I),C=ES",
+            "emailAddress=pki@sk.ee,CN=EE Certification Centre Root CA,O=AS Sertifitseerimiskeskus,C=EE",
+            "CN=Entrust.net Certification Authority (2048),OU=(c) 1999 Entrust.net Limited,OU=www.entrust.net/CPS_2048 incorp. by ref. (limits liab.),O=Entrust.net",
+            "CN=Entrust Root Certification Authority,OU=(c) 2006 Entrust\, Inc.,OU=www.entrust.net/CPS is incorporated by reference,O=Entrust\, Inc.,C=US",
+            "CN=Entrust Root Certification Authority - EC1,OU=(c) 2012 Entrust\, Inc. - for authorized use only,OU=See www.entrust.net/legal-terms,O=Entrust\, Inc.,C=US",
+            "CN=Entrust Root Certification Authority - G2,OU=(c) 2009 Entrust\, Inc. - for authorized use only,OU=See www.entrust.net/legal-terms,O=Entrust\, Inc.,C=US",
+            "CN=Entrust Root Certification Authority - G4,OU=(c) 2015 Entrust\, Inc. - for authorized use only,OU=See www.entrust.net/legal-terms,O=Entrust\, Inc.,C=US",
+            "emailAddress=info@diginotar.nl,CN=DigiNotar Root CA,O=DigiNotar,C=NL",
+            "CN=DigiNotar PKIoverheid CA Organisatie - G2,O=DigiNotar B.V.,C=NL",
+            "CN=GDCA TrustAUTH R5 ROOT,O=GUANG DONG CERTIFICATE AUTHORITY CO.\,LTD.,C=CN",
+            "CN=GTS Root R1,O=Google Trust Services LLC,C=US",
+            "CN=GTS Root R2,O=Google Trust Services LLC,C=US",
+            "CN=GTS Root R3,O=Google Trust Services LLC,C=US",
+            "CN=GTS Root R4,O=Google Trust Services LLC,C=US",
+            "CN=GeoTrust Global CA,O=GeoTrust Inc.,C=US",
+            "CN=GeoTrust Primary Certification Authority,O=GeoTrust Inc.,C=US",
+            "CN=GeoTrust Primary Certification Authority - G2,OU=(c) 2007 GeoTrust Inc. - For authorized use only,O=GeoTrust Inc.,C=US",
+            "CN=GeoTrust Primary Certification Authority - G3,OU=(c) 2008 GeoTrust Inc. - For authorized use only,O=GeoTrust Inc.,C=US",
+            "CN=GeoTrust Universal CA,O=GeoTrust Inc.,C=US",
+            "CN=GeoTrust Universal CA 2,O=GeoTrust Inc.,C=US",
+            "CN=GlobalSign,O=GlobalSign,OU=GlobalSign ECC Root CA - R4",
+            "CN=GlobalSign,O=GlobalSign,OU=GlobalSign ECC Root CA - R5",
+            "CN=GlobalSign Root CA,OU=Root CA,O=GlobalSign nv-sa,C=BE",
+            "CN=GlobalSign,O=GlobalSign,OU=GlobalSign Root CA - R2",
+            "CN=GlobalSign,O=GlobalSign,OU=GlobalSign Root CA - R3",
+            "CN=GlobalSign,O=GlobalSign,OU=GlobalSign Root CA - R6",
+            "CN=Global Chambersign Root - 2008,O=AC Camerfirma S.A.,serialNumber=A82743287,L=Madrid (see current address at www.camerfirma.com/address),C=EU",
+            "OU=Go Daddy Class 2 Certification Authority,O=The Go Daddy Group\, Inc.,C=US",
+            "CN=Go Daddy Root Certificate Authority - G2,O=GoDaddy.com\, Inc.,L=Scottsdale,ST=Arizona,C=US",
+            "CN=Hellenic Academic and Research Institutions ECC RootCA 2015,O=Hellenic Academic and Research Institutions Cert. Authority,L=Athens,C=GR",
+            "CN=Hellenic Academic and Research Institutions RootCA 2011,O=Hellenic Academic and Research Institutions Cert. Authority,C=GR",
+            "CN=Hellenic Academic and Research Institutions RootCA 2015,O=Hellenic Academic and Research Institutions Cert. Authority,L=Athens,C=GR",
+            "CN=Hongkong Post Root CA 1,O=Hongkong Post,C=HK",
+            "CN=Hongkong Post Root CA 3,O=Hongkong Post,L=Hong Kong,ST=Hong Kong,C=HK",
+            "CN=ISRG Root X1,O=Internet Security Research Group,C=US",
+            "CN=ISRG Root X2,O=Internet Security Research Group,C=US",
+            "CN=IdenTrust Commercial Root CA 1,O=IdenTrust,C=US",
+            "CN=IdenTrust Public Sector Root CA 1,O=IdenTrust,C=US",
+            "CN=Izenpe.com,O=IZENPE S.A.,C=ES",
+            "CN=LuxTrust Global Root 2,O=LuxTrust S.A.,C=LU",
+            "emailAddress=info@e-szigno.hu,CN=Microsec e-Szigno Root CA 2009,O=Microsec Ltd.,L=Budapest,C=HU",
+            "CN=NetLock Arany (Class Gold) F\C5\91tan\C3\BAs\C3\ADtv\C3\A1ny,OU=Tan\C3\BAs\C3\ADtv\C3\A1nykiad\C3\B3k (Certification Services),O=NetLock Kft.,L=Budapest,C=HU",
+            "CN=Network Solutions Certificate Authority,O=Network Solutions L.L.C.,C=US",
+            "CN=OISTE WISeKey Global Root GA CA,OU=OISTE Foundation Endorsed,OU=Copyright (c) 2005,O=WISeKey,C=CH",
+            "CN=OISTE WISeKey Global Root GB CA,OU=OISTE Foundation Endorsed,O=WISeKey,C=CH",
+            "CN=OISTE WISeKey Global Root GC CA,OU=OISTE Foundation Endorsed,O=WISeKey,C=CH",
+            "CN=QuoVadis Root Certification Authority,OU=Root Certification Authority,O=QuoVadis Limited,C=BM",
+            "CN=QuoVadis Root CA 1 G3,O=QuoVadis Limited,C=BM",
+            "CN=QuoVadis Root CA 2,O=QuoVadis Limited,C=BM",
+            "CN=QuoVadis Root CA 2 G3,O=QuoVadis Limited,C=BM",
+            "CN=QuoVadis Root CA 3,O=QuoVadis Limited,C=BM",
+            "CN=QuoVadis Root CA 3 G3,O=QuoVadis Limited,C=BM",
+            "CN=SSL.com EV Root Certification Authority ECC,O=SSL Corporation,L=Houston,ST=Texas,C=US",
+            "CN=SSL.com EV Root Certification Authority RSA R2,O=SSL Corporation,L=Houston,ST=Texas,C=US",
+            "CN=SSL.com Root Certification Authority ECC,O=SSL Corporation,L=Houston,ST=Texas,C=US",
+            "CN=SSL.com Root Certification Authority RSA,O=SSL Corporation,L=Houston,ST=Texas,C=US",
+            "CN=SZAFIR ROOT CA2,O=Krajowa Izba Rozliczeniowa S.A.,C=PL",
+            "CN=SecureSign RootCA11,O=Japan Certification Services\, Inc.,C=JP",
+            "CN=SecureTrust CA,O=SecureTrust Corporation,C=US",
+            "CN=Secure Global CA,O=SecureTrust Corporation,C=US",
+            "OU=Security Communication RootCA2,O=SECOM Trust Systems CO.\,LTD.,C=JP",
+            "OU=Security Communication RootCA1,O=SECOM Trust.net,C=JP",
+            "CN=Sonera Class2 CA,O=Sonera,C=FI",
+            "CN=Staat der Nederlanden EV Root CA,O=Staat der Nederlanden,C=NL",
+            "CN=Staat der Nederlanden Root CA - G3,O=Staat der Nederlanden,C=NL",
+            "OU=Starfield Class 2 Certification Authority,O=Starfield Technologies\, Inc.,C=US",
+            "CN=Starfield Root Certificate Authority - G2,O=Starfield Technologies\, Inc.,L=Scottsdale,ST=Arizona,C=US",
+            "CN=Starfield Services Root Certificate Authority - G2,O=Starfield Technologies\, Inc.,L=Scottsdale,ST=Arizona,C=US",
+            "CN=SwissSign Gold CA - G2,O=SwissSign AG,C=CH",
+            "CN=SwissSign Platinum CA - G2,O=SwissSign AG,C=CH",
+            "CN=SwissSign Silver CA - G2,O=SwissSign AG,C=CH",
+            "CN=Symantec Class 1 Public Primary Certification Authority - G4,OU=Symantec Trust Network,O=Symantec Corporation,C=US",
+            "CN=Symantec Class 1 Public Primary Certification Authority - G6,OU=Symantec Trust Network,O=Symantec Corporation,C=US",
+            "CN=Symantec Class 2 Public Primary Certification Authority - G4,OU=Symantec Trust Network,O=Symantec Corporation,C=US",
+            "CN=Symantec Class 2 Public Primary Certification Authority - G6,OU=Symantec Trust Network,O=Symantec Corporation,C=US",
+            "CN=T-TeleSec GlobalRoot Class 2,OU=T-Systems Trust Center,O=T-Systems Enterprise Services GmbH,C=DE",
+            "CN=T-TeleSec GlobalRoot Class 3,OU=T-Systems Trust Center,O=T-Systems Enterprise Services GmbH,C=DE",
+            "CN=TUBITAK Kamu SM SSL Kok Sertifikasi - Surum 1,OU=Kamu Sertifikasyon Merkezi - Kamu SM,O=Turkiye Bilimsel ve Teknolojik Arastirma Kurumu - TUBITAK,L=Gebze - Kocaeli,C=TR",
+            "CN=TWCA Global Root CA,OU=Root CA,O=TAIWAN-CA,C=TW",
+            "CN=TWCA Root Certification Authority,OU=Root CA,O=TAIWAN-CA,C=TW",
+            "O=Government Root Certification Authority,C=TW",
+            "CN=TeliaSonera Root CA v1,O=TeliaSonera",
+            "CN=TrustCor ECA-1,OU=TrustCor Certificate Authority,O=TrustCor Systems S. de R.L.,L=Panama City,ST=Panama,C=PA",
+            "CN=TrustCor RootCert CA-1,OU=TrustCor Certificate Authority,O=TrustCor Systems S. de R.L.,L=Panama City,ST=Panama,C=PA",
+            "CN=TrustCor RootCert CA-2,OU=TrustCor Certificate Authority,O=TrustCor Systems S. de R.L.,L=Panama City,ST=Panama,C=PA",
+            "OU=Trustis FPS Root CA,O=Trustis Limited,C=GB",
+            "CN=UCA Extended Validation Root,O=UniTrust,C=CN",
+            "CN=UCA Global G2 Root,O=UniTrust,C=CN",
+            "CN=USERTrust ECC Certification Authority,O=The USERTRUST Network,L=Jersey City,ST=New Jersey,C=US",
+            "CN=USERTrust RSA Certification Authority,O=The USERTRUST Network,L=Jersey City,ST=New Jersey,C=US",
+            "CN=VeriSign Class 3 Public Primary Certification Authority - G4,OU=(c) 2007 VeriSign\, Inc. - For authorized use only,OU=VeriSign Trust Network,O=VeriSign\, Inc.,C=US",
+            "CN=VeriSign Class 3 Public Primary Certification Authority - G5,OU=(c) 2006 VeriSign\, Inc. - For authorized use only,OU=VeriSign Trust Network,O=VeriSign\, Inc.,C=US",
+            "CN=VeriSign Universal Root Certification Authority,OU=(c) 2008 VeriSign\, Inc. - For authorized use only,OU=VeriSign Trust Network,O=VeriSign\, Inc.,C=US",
+            "CN=VeriSign Class 1 Public Primary Certification Authority - G3,OU=(c) 1999 VeriSign\, Inc. - For authorized use only,OU=VeriSign Trust Network,O=VeriSign\, Inc.,C=US",
+            "CN=VeriSign Class 2 Public Primary Certification Authority - G3,OU=(c) 1999 VeriSign\, Inc. - For authorized use only,OU=VeriSign Trust Network,O=VeriSign\, Inc.,C=US",
+            "CN=VeriSign Class 3 Public Primary Certification Authority - G3,OU=(c) 1999 VeriSign\, Inc. - For authorized use only,OU=VeriSign Trust Network,O=VeriSign\, Inc.,C=US",
+            "CN=XRamp Global Certification Authority,O=XRamp Security Services Inc,OU=www.xrampsecurity.com,C=US",
+            "OU=certSIGN ROOT CA,O=certSIGN,C=RO",
+            "OU=ePKI Root Certification Authority,O=Chunghwa Telecom Co.\, Ltd.,C=TW",
+            "CN=emSign ECC Root CA - C3,O=eMudhra Inc,OU=emSign PKI,C=US",
+            "CN=emSign ECC Root CA - G3,O=eMudhra Technologies Limited,OU=emSign PKI,C=IN",
+            "CN=emSign Root CA - C1,O=eMudhra Inc,OU=emSign PKI,C=US",
+            "CN=emSign Root CA - G1,O=eMudhra Technologies Limited,OU=emSign PKI,C=IN",
+            "CN=thawte Primary Root CA,OU=(c) 2006 thawte\, Inc. - For authorized use only,OU=Certification Services Division,O=thawte\, Inc.,C=US",
+            "CN=thawte Primary Root CA - G2,OU=(c) 2007 thawte\, Inc. - For authorized use only,O=thawte\, Inc.,C=US",
+            "CN=thawte Primary Root CA - G3,OU=(c) 2008 thawte\, Inc. - For authorized use only,OU=Certification Services Division,O=thawte\, Inc.,C=US",
+        ]
+
+        # Define DN replacements to make.
+        replacements = [
+            ["Common Name: ", "CN="],
+            ["Organizational Unit: ", "OU="],
+            ["Organization: ", "O="],
+            ["Locality: ", "L="],
+            ["State: ", "ST="],
+            ["Country: ", "C="],
+        ]
+
+        #  Identify unknown issuers.
+        for certificate in self.certificates:
+            # Make DN replacements where necessary.
+            issuer = certificate.issuer
+            for replacement in replacements:
+                issuer = issuer.replace(replacement[0], replacement[1])
+            issuer = issuer.replace(", ", ",")
+
+            # Check if issuer is in common issuer list.
+            if issuer not in commonIssuers:
+                self.analysedCertificates["Uncommon Issuer"].append(certificate)
+
+        self.analysedAvailable.append(["analysedCertificates", self.analysedCertificates])
+
+    def analyse(self):
+        """Perform analysis on gathered data."""
+
+        # Analyse data.
+        logging.debug("[*] Attempting to Analyse Addons...")
+        self.analyseAddons()
+        logging.debug("[*] Attempting to Analyse Extensions...")
+        self.analyseExtensions()
+        logging.debug("[*] Attempting to Analyse Certificates...")
+        self.analyseCertificates()
 
 
 def directoryPath(dir):
@@ -954,6 +1233,7 @@ def findAddons(addonsPath):
             name=profileAddon["name"],
             version=profileAddon["version"],
             URL=profileAddon["sourceURI"],
+            storeURL=profileAddon["reviewURL"].replace("reviews/", ""),
             downloads=profileAddon["weeklyDownloads"],
             screenshots=[
                 screenshot["url"] for screenshot in profileAddon["screenshots"]
@@ -1633,7 +1913,7 @@ def dumpData(foxHunter, type, directory):
     if not foxHunter.findAvailable():
         logging.error("[!] No Data Gathered From FoxHunter.")
         sys.exit(1)
-        
+
     # Dump certificates first.
     availableList = foxHunter.findAvailable()
 
@@ -1697,7 +1977,7 @@ def dumpData(foxHunter, type, directory):
                 with open(
                     os.path.join(directory, filename), "w+", newline=""
                 ) as jsonFile:
-                    
+
                     jsonString = json.dumps([object.__dict__ for object in values])
                     jsonFile.write(jsonString)
 
@@ -1737,8 +2017,122 @@ def dumpData(foxHunter, type, directory):
                     )
                 )
 
-    logging.debug("[^] Data Dump Complete!")
 
+def findAnalysedKeys(dictionary):
+    for key in dictionary.keys():
+        if dictionary[key] != []:
+            return dictionary[key][0].__dict__.keys()
+
+
+
+def dumpAnalysed(foxHunter, type, directory):
+    """
+    Dumps analysed Firefox data to various file formats.
+
+    Parameters
+    ----------
+    foxHunter : FoxHunter
+    The FoxHunter object containing data to dump.
+
+    type : str
+    File type to dump to.
+
+    directory : str
+    Path to store dumped data.
+    """
+    # Check for lack of data to dump.
+    if not foxHunter.findAnalysedAvailable():
+        logging.error("[!] No Analysed Data Available From FoxHunter.")
+        sys.exit(1)
+
+    # Dump certificates first.
+    availableList = foxHunter.findAnalysedAvailable()
+
+    # Loop through all gathered datasets one by one
+    for attribute, values in availableList:
+
+        # Create a printable version of the attribute.
+        printableAttribute = (
+            "".join(
+                " " + char if char.isupper() else char.strip() for char in attribute
+            )
+            .strip()
+            .title()
+        )
+        filename = "{}.{}".format(attribute, type)
+
+        # Deal with CSV formatting.
+        if type == "csv":
+            try:
+                with open(
+                    os.path.join(directory, filename), "w+", newline=""
+                ) as csvFile:
+                    writer = csv.writer(csvFile)
+                    writer.writerow(["reason"] + list(findAnalysedKeys(values)))
+                    for item in values:
+                        for object in values[item]:
+                            writer.writerow([item] + list(object.__dict__.values()))
+                
+            except BaseException:
+                logging.error(
+                    "[!] Failed to Dump {} to '{}'".format(printableAttribute, filename)
+                )
+            else:
+                logging.debug(
+                    "[^] Successfully Dumped {} to '{}'".format(
+                        printableAttribute, filename
+                    )
+                )
+
+        # Deal with JSON formatting.
+        if type == "json":
+            try:
+                with open(
+                    os.path.join(directory, filename), "w+", newline=""
+                ) as jsonFile:
+
+                    for item in values:
+                        values[item] = [object.__dict__ for object in values[item]]
+                    jsonString = json.dumps(values)
+                    jsonFile.write(jsonString)
+
+            except BaseException:
+                logging.error(
+                    "[!] Failed to Dump {} to '{}'".format(printableAttribute, filename)
+                )
+            else:
+                logging.debug(
+                    "[^] Successfully Dumped {} to '{}'".format(
+                        printableAttribute, filename
+                    )
+                )
+
+        # Deal with XML formatting.
+        if type == "xml":
+            try:
+                # Create the XML tree.
+                root = ET.Element(attribute)
+                for item in values:
+                    sub = ET.SubElement(root, item[0].lower() + item[1:].replace(" ", ""))
+                    for object in values[item]:
+                        sub2 = ET.SubElement(sub, object.__class__.__name__.lower())
+                        for key in object.__dict__.keys():
+                            ET.SubElement(sub2, key).text = str(object.__dict__[key])
+
+                # Write the XML tree to file.
+                tree = ET.ElementTree(root)
+                tree.write(os.path.join(directory, filename))
+
+            except BaseException:
+                logging.error(
+                    "[!] Failed to Dump {} to '{}'".format(printableAttribute, filename)
+                )
+            else:
+                logging.debug(
+                    "[^] Successfully Dumped {} to '{}'".format(
+                        printableAttribute, filename
+                    )
+                )
 
 if __name__ == "__main__":
 
@@ -1817,27 +2211,24 @@ if __name__ == "__main__":
         help="directory to dump artifacts in XML format",
         required=False,
     )
+    parser.add_argument(
+        "-A",
+        "--analyse",
+        action="store_true",
+        help="analyse gathered artifacts",
+        required=False,
+    )
 
     # Parse the arguments.
     arguments = parser.parse_args()
 
-    # If quiet flag is not set, allow DEBUG levels and above through, and force handlers to change.
-    if arguments.quiet == False:
-        logging.basicConfig(level=logging.DEBUG, format="%(message)s", force=True)
-
-    # Check for presence of at least one output argument.
-    if (
-        arguments.output_csv is None
-        and arguments.output_json is None
-        and arguments.output_xml is None
-    ):
-        parser.error(
-            "one of the following arguments is required: -oC/--output-csv, -oJ/--output-json, -oX/--output-xml"
-        )
-
     # If no profile directory specified, search the system for them, and let the user choose.
     if arguments.profile == None:
         arguments.profile = chooseFirefoxProfileDirectory()
+
+    # If quiet flag is not set, allow DEBUG levels and above through, and force handlers to change.
+    if arguments.quiet == False:
+        logging.basicConfig(level=logging.DEBUG, format="%(message)s", force=True)
 
     logging.debug("[*] Received Firefox Profile!")
     logging.debug("[*] Searching Selected Profile Directory for Artifacts...")
@@ -1908,17 +2299,43 @@ if __name__ == "__main__":
         logins,
     )
 
-    logging.debug("\n\033[1m\033[4m[*] Dumping Gathered Data...\033[0m\n")
+    # Analyse the data if necessary.
+    if arguments.analyse:
+        logging.debug("\n\033[1m\033[4m[*] Analysing Gathered Data...\033[0m\n")
+        foxHunter.analyse()
+
+    # Print message if appropriate.
+    if arguments.output_csv or arguments.output_json or arguments.output_xml:
+        logging.debug("\n\033[1m\033[4m[*] Dumping Gathered Data...\033[0m\n")
 
     # Check the input arguments for correct formatting.
     if arguments.output_csv:
         dumpData(foxHunter, "csv", arguments.output_csv)
+        if arguments.analyse:
+            dumpAnalysed(foxHunter, "csv", arguments.output_csv)
     elif arguments.output_json:
         dumpData(foxHunter, "json", arguments.output_json)
+        if arguments.analyse:
+            dumpAnalysed(foxHunter, "json", arguments.output_json)
     elif arguments.output_xml:
         dumpData(foxHunter, "xml", arguments.output_xml)
+        if arguments.analyse:
+            dumpAnalysed(foxHunter, "xml", arguments.output_xml)
+
+    # Print summary.
+    logging.info("\n\033[1m\033[4m[+] Artifact Statistics\033[0m\n")
+    for attribute, values in foxHunter.findAvailable():
+        # Create a printable version of the attribute.
+        printableAttribute = (
+            "".join(
+                " " + char if char.isupper() else char.strip() for char in attribute
+            )
+            .strip()
+            .title()
+        )
+        print("Total {}: {}".format(printableAttribute, len(values)))
 
     print("\n[*] Shutting Down...")
 
 # Relative Paths & Check File vs Directory
-# Analysis Mode
+# Finish Certificate Checking
