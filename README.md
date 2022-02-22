@@ -46,6 +46,18 @@ Finally, FoxHunter performs analysis on gathered artifacts:
 <li>Identifies extensions with interesting/abnormal permissions.</li>
 <li>Identifies certificates from relatively unknown issuers.</li>
 <li>Identifies certificates with weak/unrecommended encryption standards.</li>
+<li>Categorises bookmarks by site type.</li>
+<li>Identifies downloads with interesting file names.</li>
+<li>Identifies common file download websites.</li>
+<li>Categorises downloads by file type.</li>
+<li>Produces graphs of user downloads per day.</li>
+<li>Identifies interesting form history fields - logins, usernames, passwords, phone numbers, addresses, commands.</li>
+<li>Identifies the top 5 most commonly used form fields, and their values.</li>
+<li>Identifies commonly used login usernames and passwords.</li>
+<li>Identifies cookies with interesting values.</li>
+<li>Identifies the 5 most common browsing history searches.</li>
+<li>Produces graphs of browser usage over time.</li>
+<li>Produces graphs of site browsing habits.</li>
 </ol>
 
 </p>
