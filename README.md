@@ -12,7 +12,9 @@
 
 <p align="center">
 A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping</b> Firefox browser artifacts on Linux platforms for forensic purposes. 
-<br/>
+
+<br/><br/>
+
 FoxHunter extracts and dumps:
 <ul>
 <li>Addons</li>
@@ -79,7 +81,9 @@ Install the required dependencies for FoxHunter, using `pip`.
 
 To verify that dependencies have been installed correctly, run FoxHunter.
 
-`python3 foxhunter.py -h`
+`python3 foxhunter.py -h`  
+
+<br/>
 
 ## 🦊 Commands & Options
 
@@ -103,6 +107,8 @@ options:
   -oX OUTPUT_DIR, --output-xml OUTPUT_DIR    directory to dump artifacts in XML format
   -A, --analyse                              analyse gathered artifacts
 ```
+
+<br/>
 
 ## ⚖️ License
 
