@@ -10,12 +10,13 @@ import json
 import sqlite3
 import ctypes
 import re
-from base64 import b64decode
+from base64 import b64decode, b64encode
 from urllib import parse, request
 import lz4.block as lz4
 from datetime import datetime
 import xml.etree.cElementTree as ET
 from asn1crypto import pem, x509
+import matplotlib.pyplot as plt
 
 
 class Addon:
@@ -820,6 +821,8 @@ class FoxHunter:
         ]
 
         self.analysedAvailable = []
+        self.generatedGraphs = []
+        self.diagramDirectories = []
 
     def findAvailable(self):
         """Returns the list of set attributes."""
@@ -870,7 +873,9 @@ class FoxHunter:
                     ):
                         self.analysedAddons["Out Of Date"].append(addon)
             except:
-                logging.error("[!] No Internet Connection. Skipping Addon Version Checks...")
+                logging.error(
+                    "[!] No Internet Connection. Skipping Addon Version Checks..."
+                )
                 internetCheck = False
 
         self.analysedAvailable.append(["analysedAddons", self.analysedAddons])
@@ -1093,7 +1098,10 @@ class FoxHunter:
                 self.analysedCertificates["Uncommon Issuer"].append(certificate)
 
             # Check for RSA less than 2048.
-            if certificate.subjectKeyAlgorithm == "rsa" and certificate.subjectKeyBitSize < 2048:
+            if (
+                certificate.subjectKeyAlgorithm == "rsa"
+                and certificate.subjectKeyBitSize < 2048
+            ):
                 self.analysedCertificates["Weak Encryption"].append(certificate)
 
             # Check for SHA1, MD5 or MD2 hashes.
@@ -1103,6 +1111,176 @@ class FoxHunter:
         self.analysedAvailable.append(
             ["analysedCertificates", self.analysedCertificates]
         )
+
+    def analyseBookmarks(self):
+        """
+        Performs analysis on gathered bookmarks.
+
+        1. Finds deleted bookmarks.
+        2. Produces timeline of bookmarks.
+        """
+
+        self.analysedBookmarks = {"Deleted": []}
+
+        # Identify deleted bookmarks
+        for bookmark in self.bookmarks:
+            if not bookmark.active:
+                self.analysedBookmarks["Deleted"].append(bookmark)
+
+        self.analysedAvailable.append(["analysedBookmarks", self.analysedBookmarks])
+
+        # GENERATE TIMELINE
+
+    def analyseDownloads(self):
+        """
+        Performs analysis on gathered downloads.
+
+        1. Finds downloads with interesting file names.
+        2. Categorises downloads by file type for further analysis.
+        3. Finds websites that content is commonly downloaded from.
+        4. Produces user download graphs.
+        """
+
+    def analyseFormHistory(self):
+        """
+        Performs analysis on gathered autocomplete form history.
+
+        1. Finds interesting form history fields, such as logins, phone numbers, addresses, etc...
+        2. Finds commonly used form fields.
+        3. Produces graphs of most commonly used form fields.
+        """
+
+        self.analysedFormHistory = {"PII": [], "Most Common": []}
+
+        # Sort the form history based on use count.
+        self.formHistory.sort(key=lambda x: x.useCount, reverse=True)
+
+        # Extract data
+        for formField in self.formHistory:
+            # Retrieve 10 most common form fields.
+            if len(self.analysedFormHistory["Most Common"]) < 10:
+                self.analysedFormHistory["Most Common"].append(formField)
+
+            # Check for PII in form field
+            if any(
+                PII in formField.name.lower()
+                for PII in [
+                    "user",
+                    "pass",
+                    "login",
+                    "name",
+                    "phone",
+                    "email",
+                    "address",
+                ]
+            ):
+                self.analysedFormHistory["PII"].append(formField)
+
+        self.analysedAvailable.append(["analysedFormHistory", self.analysedFormHistory])
+
+        # Generate graph of commonly used fields.
+        labels = []
+        plots = []
+        for formField in self.analysedFormHistory["Most Common"]:
+            labels.append("{}={}".format(formField.name, formField.value))
+            plots.append(formField.useCount)
+
+        # Plot the bar chart.
+        plt.clf()
+        plt.barh(labels, plots, color="dodgerblue")
+        plt.ylabel("Field Name & Value")
+        plt.xlabel("Use Count")
+        plt.title("Top Ten Most Common Autocomplete Form Fields")
+
+        for directory in self.diagramDirectories:
+            plt.savefig(
+                os.path.join(directory, "commonFormHistoryFields.png"),
+                dpi=400,
+                bbox_inches="tight",
+            )
+
+    def analyseLogins(self):
+        """
+        Performs analysis on gathered logins (if decrypted).
+
+        1. Finds commonly used login usernames/passwords.
+        """
+
+    def analyseCookies(self):
+        """
+        Performs analysis on gathered cookies.
+
+        1. Finds cookies with interesting values.
+        """
+        self.analysedCookies = {"Base64": [], "Hexadecimal": [], "GA Cookie": []}
+
+        # Analyse cookies.
+        for cookie in self.cookies:
+            # Check for base64.
+            try:
+                if b64encode(b64decode(cookie.value)) == cookie.value:
+                    self.analysedCookies["Base64"].append(cookie)
+            except:
+                pass
+
+            # Check for hexadecimal.
+            try:
+                if int("cookie.value", 16):
+                    self.analysedCookies["Hexadecimal"].append(cookie)
+            except:
+                pass
+
+            # Check for GA cookies.
+            if "_ga" in cookie.name:
+                self.analysedCookies["GA Cookie"].append(cookie)
+
+        self.analysedAvailable.append(["analysedCookies", self.analysedCookies])
+
+    def analyseHistorySearches(self):
+        """
+        Performs analysis on gathered history searches.
+
+        1. Finds common browsing history searches.
+        """
+
+        self.analysedHistorySearches = {"Most Common": []}
+
+        # Sort the history searches based on use count, and extract them.
+        self.historySearches.sort(key=lambda x: x.useFrequency, reverse=True)
+        self.analysedHistorySearches["Most Common"] = self.historySearches[:10]
+
+        self.analysedAvailable.append(
+            ["analysedHistorySearches", self.analysedHistorySearches]
+        )
+
+        # Generate graph of commonly used fields.
+        labels = []
+        plots = []
+        for historySearch in self.analysedHistorySearches["Most Common"]:
+            labels.append(historySearch.query)
+            plots.append(historySearch.useFrequency)
+
+        # Plot the bar chart.
+        plt.clf()
+        plt.barh(labels, plots, color="dodgerblue")
+        plt.ylabel("Query")
+        plt.xlabel("Use Frequency")
+        plt.title("Top Ten Most Common History Searches")
+
+        for directory in self.diagramDirectories:
+            plt.savefig(
+                os.path.join(directory, "commonHistorySearches.png"),
+                dpi=400,
+                bbox_inches="tight",
+            )
+
+    def analyseBrowsingHistory(self):
+        """
+        Performs analysis on gathered browsing history items.
+
+        1. Produces graphs of browser usage over periods of time.
+        2. Produces graphs of site browsing habits.
+        """
 
     def analyse(self):
         """Perform analysis on gathered data."""
@@ -1117,6 +1295,27 @@ class FoxHunter:
         logging.debug("[*] Attempting to Analyse Certificates...")
         self.analyseCertificates()
         logging.debug("[^] Finished Analysis of Certificates!\n")
+        logging.debug("[*] Attempting to Analyse Cookies...")
+        self.analyseCookies()
+        logging.debug("[^] Finished Analysis of Cookies!\n")
+        logging.debug("[*] Attempting to Analyse Form History...")
+        self.analyseFormHistory()
+        logging.debug("[^] Finished Analysis of Form History!\n")
+        logging.debug("[*] Attempting to Analyse History Searches...")
+        self.analyseHistorySearches()
+        logging.debug("[^] Finished Analysis of History Searches!\n")
+        logging.debug("[*] Attempting to Analyse Download History...")
+        # Download History
+        logging.debug("[^] Finished Analysis of Download History!\n")
+        logging.debug("[*] Attempting to Analyse Browsing History...")
+        # Browsing History
+        logging.debug("[^] Finished Analysis of Browsing History!\n")
+        logging.debug("[*] Attempting to Analyse Bookmarks...")
+        self.analyseBookmarks()
+        logging.debug("[^] Finished Analysis of Bookmarks!\n")
+        logging.debug("[*] Attempting to Analyse Logins...")
+        # Logins
+        logging.debug("[^] Finished Analysis of Logins!")
 
 
 def directoryPath(dir):
@@ -1946,7 +2145,7 @@ def dumpData(foxHunter, type, directory):
     if not foxHunter.findAvailable():
         logging.error("[!] No Data Gathered From FoxHunter.")
         sys.exit(1)
-    
+
     # Dump certificates first.
     availableList = foxHunter.findAvailable()
 
@@ -2073,7 +2272,7 @@ def dumpAnalysed(foxHunter, type, directory):
     directory : str
     Path to store dumped data.
     """
-    
+
     # Add newline for clarity.
     logging.debug("")
 
@@ -2082,8 +2281,9 @@ def dumpAnalysed(foxHunter, type, directory):
         logging.error("[!] No Analysed Data Available From FoxHunter.")
         sys.exit(1)
 
-    # Dump certificates first.
     availableList = foxHunter.findAnalysedAvailable()
+
+    logging.debug("[*] Successfully Dumped Created Diagrams to 'diagrams/'")
 
     # Loop through all gathered datasets one by one.
     for attribute, values in availableList:
@@ -2175,6 +2375,9 @@ def dumpAnalysed(foxHunter, type, directory):
 
 
 if __name__ == "__main__":
+
+    # Remove plot warnings.
+    logging.getLogger("matplotlib.font_manager").disabled = True
 
     # Display foxhunter logo.
     print(
@@ -2339,6 +2542,26 @@ if __name__ == "__main__":
         logins,
     )
 
+    # Add diagram directories
+    if arguments.output_csv:
+        directory = os.path.join(arguments.output_csv, "diagrams/")
+        isExist = os.path.exists(directory)
+        if not isExist:
+            os.makedirs(directory)
+        foxHunter.diagramDirectories.append(directory)
+    if arguments.output_json:
+        directory = os.path.join(arguments.output_json, "diagrams/")
+        isExist = os.path.exists(directory)
+        if not isExist:
+            os.makedirs(directory)
+        foxHunter.diagramDirectories.append(directory)
+    if arguments.output_xml:
+        directory = os.path.join(arguments.output_xml, "diagrams/")
+        isExist = os.path.exists(directory)
+        if not isExist:
+            os.makedirs(directory)
+        foxHunter.diagramDirectories.append(directory)
+
     # Analyse the data if necessary.
     if arguments.analyse:
         logging.debug("\n\033[1m\033[4m[*] Analysing Gathered Data...\033[0m\n")
@@ -2378,3 +2601,7 @@ if __name__ == "__main__":
     print("\n[*] Shutting Down...")
 
 # Relative Paths & Check File vs Directory
+# Bookmarks Timeline
+# Login Analysis
+# Download Analysis
+# History Analysis

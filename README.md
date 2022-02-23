@@ -48,7 +48,7 @@ A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping
 <li>Identifies extensions with interesting/abnormal permissions.</li>
 <li>Identifies certificates from relatively unknown issuers.</li>
 <li>Identifies certificates with weak/unrecommended encryption standards.</li>
-<li>Categorises bookmarks by site type.</li>
+<li>Identifies deleted bookmarks.</li>
 <li>Identifies downloads with interesting file names.</li>
 <li>Identifies common file download websites.</li>
 <li>Categorises downloads by file type.</li>
