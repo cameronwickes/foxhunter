@@ -58,7 +58,7 @@ A tool for <b>extracting</b>, <b>analysing</b>, <b>attacking</b>, and <b>dumping
 <li>Identifies commonly used login usernames and passwords.</li>
 <li>Identifies potential patterns within usernames or passwords.</li>
 <li>Identifies cookies with interesting values (Base64, Hex, GA Cookies).</li>
-<li>Identifies the 5 most common browsing history searches.</li>
+<li>Identifies the most common browsing history searches.</li>
 <li>Identifies common browsing history searches.</li>
 <li>Identifies commonly used search engines.</li>
 <li>Identifies commonly used social media sites.</li>
