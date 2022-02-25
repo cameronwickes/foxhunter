@@ -116,7 +116,7 @@ options:
 
 ## 🔧 Testing
 
-FoxHunter is tested using the [bash-tap] (https://github.com/wbsch/bash_tap) testing framework.
+FoxHunter is tested using the [bash-tap](https://github.com/wbsch/bash_tap) testing framework.
 
 To run all tests, execute `./test`. In order for a test to be picked up by this program, it must have:
 - An extension of `.t`.
