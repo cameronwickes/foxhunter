@@ -4,7 +4,9 @@ jobs:
   Run-Tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository code
+      - name: Check Out Repository Code
         uses: actions/checkout@v2
-      - name: run testing
-        run: ${{ github.workspace }}/testing/test
+      - name: Change To Testing Directory
+        run: cd ${{ github.workspace }}/testing
+      - name: Run Automated Tests
+        run: ./test
