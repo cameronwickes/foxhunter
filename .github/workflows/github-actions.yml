@@ -9,4 +9,4 @@ jobs:
       - name: Change To Testing Directory
         run: cd ${{ github.workspace }}/testing
       - name: Run Automated Tests
-        run: ./test
+        run: ${{ github.workspace }}/testing/test
