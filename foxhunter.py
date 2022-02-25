@@ -20,7 +20,7 @@ import xml.etree.cElementTree as ET
 from urllib import parse
 from asn1crypto import pem, x509
 from base64 import b64decode, b64encode
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 class Addon:
@@ -719,7 +719,7 @@ class LoginData:
 
     def deactivateProfile(self):
         """Deactivate the NSS profile and library once finished."""
-        errorCode = self.decrypter.NSS_Shutdown()
+        _ = self.decrypter.NSS_Shutdown()
 
 
 class Login:
@@ -2177,7 +2177,7 @@ def directoryPath(dir):
     if os.path.isdir(dir):
         return dir
     else:
-        logging.error("[!] No such directory {}\n".format(dir))
+        logging.error("[!] No such directory '{}'\n".format(dir))
         sys.exit(1)
 
 
@@ -2195,7 +2195,27 @@ def fileExists(filePath):
     status : bool
     Set if the file exists, unset if no such file.
     """
-    if os.path.exists(filePath):
+    if os.path.isfile(filePath):
+        return True
+    else:
+        return False
+
+
+def dirExists(dirPath):
+    """
+    Checks that the file specified exists.
+
+    Parameters
+    ----------
+    dirPath : str
+    The path to the directory.
+
+    Return Values
+    -------------
+    status : bool
+    Set if the file exists, unset if no such file.
+    """
+    if os.path.isdir(dirPath):
         return True
     else:
         return False
@@ -2781,30 +2801,36 @@ def findBookmarks(bookmarksPath, bookmarksFolder):
     logging.debug("[^] Successfully Gathered Active Bookmarks From 'places.sqlite'")
 
     # Extraction of BACKUP bookmarks (maybe deleted...)
-    for bookmarkBackup in os.listdir(bookmarksFolder):
-        with open(os.path.join(bookmarksFolder, bookmarkBackup), "rb") as backupMozFile:
-            # Check that file is mozlz4 compressed.
-            if backupMozFile.read(8) == b"mozLz40\0":
-                # Gather root bootmark, and recursively find child bookmarks.
-                rootBookmark = json.loads(lz4.decompress(backupMozFile.read()))
-                childBookmarks = findBookmarkChildren(
-                    rootBookmark, "text/x-moz-place", []
-                )
-                for childBookmark in childBookmarks:
-                    # Check if bookmark has been deleted. Add it to the bookmarks list if it has.
-                    if childBookmark["uri"] not in [x.URL for x in bookmarksList]:
-                        bookmarkObject = Bookmark(
-                            dateAdded=datetime.utcfromtimestamp(
-                                float(childBookmark["dateAdded"] / 1000000)
-                            ).strftime("%Y-%m-%d %H:%M:%S"),
-                            URL=childBookmark["uri"],
-                            title=childBookmark["title"],
-                            active=False,
-                        )
-                        bookmarksList.append(bookmarkObject)
+    if dirExists(bookmarksFolder):
+        for bookmarkBackup in os.listdir(bookmarksFolder):
+            with open(
+                os.path.join(bookmarksFolder, bookmarkBackup), "rb"
+            ) as backupMozFile:
+                # Check that file is mozlz4 compressed.
+                if backupMozFile.read(8) == b"mozLz40\0":
+                    # Gather root bootmark, and recursively find child bookmarks.
+                    rootBookmark = json.loads(lz4.decompress(backupMozFile.read()))
+                    childBookmarks = findBookmarkChildren(
+                        rootBookmark, "text/x-moz-place", []
+                    )
+                    for childBookmark in childBookmarks:
+                        # Check if bookmark has been deleted. Add it to the bookmarks list if it has.
+                        if childBookmark["uri"] not in [x.URL for x in bookmarksList]:
+                            bookmarkObject = Bookmark(
+                                dateAdded=datetime.utcfromtimestamp(
+                                    float(childBookmark["dateAdded"] / 1000000)
+                                ).strftime("%Y-%m-%d %H:%M:%S"),
+                                URL=childBookmark["uri"],
+                                title=childBookmark["title"],
+                                active=False,
+                            )
+                            bookmarksList.append(bookmarkObject)
+
+        logging.debug(
+            "[^] Successfully Gathered Deleted Bookmarks From 'bookmarkbackups/'"
+        )
 
     # Return the list of bookmark objects.
-    logging.debug("[^] Successfully Gathered Deleted Bookmarks From 'bookmarkbackups/'")
     return bookmarksList
 
 
@@ -2927,7 +2953,7 @@ def findLoginData(loginPath, keyPath):
                 elif selectedOption == "2":
                     # Get the wordlist from the user
                     dictionary = input("[+] Please Enter the Path to the Wordlist: ")
-                    if os.path.exists(dictionary):
+                    if fileExists(dictionary):
                         logging.info(
                             "[*] Attempting to Brute Force (This May Take a While...)"
                         )
@@ -2958,9 +2984,7 @@ def findLoginData(loginPath, keyPath):
 
                     # Wordlist not found!
                     else:
-                        logging.error(
-                            "[!] No Such File or Directory {}".format(dictionary)
-                        )
+                        logging.error("[!] No Such File '{}'".format(dictionary))
             return loginData.logins
 
 
@@ -2996,8 +3020,7 @@ def dumpData(foxHunter, type, directory):
         certificateList = [f[1] for f in availableList if f[0] == "certificates"][0]
         # Create the certificate directory.
         certDirectory = os.path.join(directory, "certificates")
-        isExist = os.path.exists(certDirectory)
-        if not isExist:
+        if not dirExists(certDirectory):
             os.makedirs(certDirectory)
 
         # Loop through certificates, dump the bytes in the specified filename.
@@ -3218,7 +3241,7 @@ def dumpAnalysed(foxHunter, type, directory):
 
 if __name__ == "__main__":
 
-    # Remove plot warnings.
+    # Remove warnings.
     logging.getLogger("matplotlib").setLevel(logging.CRITICAL)
     logging.getLogger("requests").setLevel(logging.CRITICAL)
     logging.getLogger("urllib3").setLevel(logging.CRITICAL)
@@ -3323,34 +3346,40 @@ if __name__ == "__main__":
     logging.debug("\n\033[1m\033[4m[*] Extracting Addons and Extensions...\033[0m\n")
 
     # Search for addons within selected firefox profile (addons.json)
-    addons = findAddons(arguments.profile + "/addons.json")
+    addons = findAddons(os.path.join(arguments.profile, "addons.json"))
 
     # Search for extensions within selected firefox profile (extensions.json).
-    extensions = findExtensions(arguments.profile + "/extensions.json")
+    extensions = findExtensions(os.path.join(arguments.profile, "extensions.json"))
 
     logging.debug(
         "\n\033[1m\033[4m[*] Extracting Certificates, Cookies and Form History...\033[0m\n"
     )
 
     # Search for certificates within selected firefox profile (cert9.db)
-    certificates = findCertificates(arguments.profile + "/cert9.db")
+    certificates = findCertificates(os.path.join(arguments.profile, "cert9.db"))
 
     # Search for cookies within selected firefox profile (cookies.sqlite)
-    cookies = findCookies(arguments.profile + "/cookies.sqlite")
+    cookies = findCookies(os.path.join(arguments.profile, "cookies.sqlite"))
 
     # Search for web form data within selected firefox profile (formhistory.sqlite)
-    formHistory = findFormHistory(arguments.profile + "/formhistory.sqlite")
+    formHistory = findFormHistory(os.path.join(arguments.profile, "formhistory.sqlite"))
 
     logging.debug("\n\033[1m\033[4m[*] Extracting History Items...\033[0m\n")
 
     # Search for history searches within selected firefox profile (places.sqlite)
-    historySearches = findHistorySearches(arguments.profile + "/places.sqlite")
+    historySearches = findHistorySearches(
+        os.path.join(arguments.profile, "places.sqlite")
+    )
 
     # Search for downloads within selected firefox profile. (places.sqlite)
-    downloadHistory = findDownloadHistory(arguments.profile + "/places.sqlite")
+    downloadHistory = findDownloadHistory(
+        os.path.join(arguments.profile, "places.sqlite")
+    )
 
     # Search for browsing history within selected firefox profile (places.sqlite)
-    browsingHistory = findBrowsingHistory(arguments.profile + "/places.sqlite")
+    browsingHistory = findBrowsingHistory(
+        os.path.join(arguments.profile, "places.sqlite")
+    )
 
     logging.debug(
         "\n\033[1m\033[4m[*] Extracting Active and Deleted Bookmarks...\033[0m\n"
@@ -3358,7 +3387,8 @@ if __name__ == "__main__":
 
     # Search for bookmarks within selected firefox profile. (places.sqlite/bookmarkbackups)
     bookmarks = findBookmarks(
-        arguments.profile + "/places.sqlite", arguments.profile + "/bookmarkbackups"
+        os.path.join(arguments.profile, "places.sqlite"),
+        os.path.join(arguments.profile, "bookmarkbackups"),
     )
 
     logging.debug(
@@ -3368,8 +3398,8 @@ if __name__ == "__main__":
     # Search for logins and passwords within selected firefox profile (logins.json/key4.db)
     # Inspiration from https://gist.github.com/dhondta/2e4946f791e5860bdb588d452b5b1570#file-firefox_decrypt_modified-py
     logins = findLoginData(
-        arguments.profile + "/logins.json",
-        arguments.profile + "/key4.db",
+        os.path.join(arguments.profile, "logins.json"),
+        os.path.join(arguments.profile + "/key4.db"),
     )
 
     # Create the FoxHunter object to analyse data.
@@ -3389,20 +3419,17 @@ if __name__ == "__main__":
     # Add diagram directories
     if arguments.output_csv:
         directory = os.path.join(arguments.output_csv, "diagrams/")
-        isExist = os.path.exists(directory)
-        if not isExist:
+        if not dirExists(directory):
             os.makedirs(directory)
         foxHunter.diagramDirectories.append(directory)
     if arguments.output_json:
         directory = os.path.join(arguments.output_json, "diagrams/")
-        isExist = os.path.exists(directory)
-        if not isExist:
+        if not dirExists(directory):
             os.makedirs(directory)
         foxHunter.diagramDirectories.append(directory)
     if arguments.output_xml:
         directory = os.path.join(arguments.output_xml, "diagrams/")
-        isExist = os.path.exists(directory)
-        if not isExist:
+        if not dirExists(directory):
             os.makedirs(directory)
         foxHunter.diagramDirectories.append(directory)
 
