@@ -1,0 +1,10 @@
+name: Test Integration
+on: [push]
+jobs:
+	Run-Tests:
+		runs-on: ubuntu-latest
+		steps:
+			- name: Check out repository code
+        uses: actions/checkout@v2
+      - name: run testing
+      	run: ${{ github.workspace }}/testing/test
