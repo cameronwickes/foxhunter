@@ -114,6 +114,16 @@ options:
 
 <br/>
 
+## 🔧 Testing
+
+FoxHunter is tested using the [bash-tap] (https://github.com/wbsch/bash_tap) testing framework.
+
+To run all tests, execute `./test`. In order for a test to be picked up by this program, it must have:
+- An extension of `.t`.
+- Executable permissions. (`chmod +x test.t`)
+
+To verify the program is working as intended, a set of pregenerated testing profiles are used. These can be found at `testing/data/profile-no-password` and `testing/data/profile-password`. Saved login data for the former profile is unlocked. Saved login data for the latter is protected using the master password in `testing/data/master-password`, which can also be obtained using the `getPassword` function within tests.
+
 ## ⚖️ License
 
 `FoxHunter` is free and open-source software licensed under the [MIT License](https://github.com/cameronwickes/foxhunter/blob/main/LICENSE).
