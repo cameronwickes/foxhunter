@@ -6,6 +6,14 @@ jobs:
     steps:
       - name: Check Out Repository Code
         uses: actions/checkout@v2
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.10
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
       - name: Run Automated Tests
         working-directory: ${{ github.workspace }}/testing
         run: ${{ github.workspace }}/testing/test
