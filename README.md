@@ -122,7 +122,11 @@ To run all tests, execute `./test`. In order for a test to be picked up by this 
 - An extension of `.t`.
 - Executable permissions. (`chmod +x test.t`)
 
-To verify the program is working as intended, a set of pregenerated testing profiles are used. These can be found at `testing/data/profile-no-password` and `testing/data/profile-password`. Saved login data for the former profile is unlocked. Saved login data for the latter is protected using the master password in `testing/data/master-password`, which can also be obtained using the `getPassword` function within tests.
+To verify the program is working as intended, a set of pregenerated testing profiles are used. These can be found at `testing/data/profile-no-password` and `testing/data/profile-password`. 
+
+Saved login data for the former profile is unlocked. Saved login data for the latter is protected using the master password in `testing/data/master-password`, which can also be obtained using the `getPassword` function within tests.
+
+<br/>
 
 ## ⚖️ License
 
