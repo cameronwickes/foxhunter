@@ -10,17 +10,17 @@ import json
 import sqlite3
 import ctypes
 import re
-from base64 import b64decode, b64encode
-from urllib import parse
+import itertools
 import requests
 import lz4.block as lz4
-from datetime import datetime, timedelta
-import xml.etree.cElementTree as ET
-from asn1crypto import pem, x509
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.dates as mdates
-import itertools
+import xml.etree.cElementTree as ET
+from urllib import parse
+from asn1crypto import pem, x509
+from base64 import b64decode, b64encode
+from datetime import datetime, timedelta
 
 
 class Addon:
@@ -3443,9 +3443,3 @@ if __name__ == "__main__":
         print("Total {}: {}".format(printableAttribute, len(values)))
 
     print("\n[*] Shutting Down...")
-
-# Relative Paths & Check File vs Directory
-# Bookmarks Timeline
-# Login Analysis
-# Download Analysis
-# History Analysis
