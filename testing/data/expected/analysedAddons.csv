@@ -1,0 +1,5 @@
+reason,name,version,URL,storeURL,downloads,screenshots,rating
+Non Mozilla Install,NMI,0.1.4,https://randomsite.org/random.xpi,https://addons.mozilla.org/en-US/firefox/addon/screen-recorder/,4366,['https://addons.mozilla.org/user-media/previews/full/random.png'],3.5455
+Low User Ratings,LDR,0.1.4,https://addons.mozilla.org/firefox/downloads/file/random.xpi,https://addons.mozilla.org/en-US/firefox/addon/screen-recorder/,10,['https://addons.mozilla.org/user-media/previews/full/random.png'],3.5455
+Low User Ratings,LUR,0.1.4,https://addons.mozilla.org/firefox/downloads/file/random.xpi,https://addons.mozilla.org/en-US/firefox/addon/screen-recorder/,4366,['https://addons.mozilla.org/user-media/previews/full/random.png'],1.5455
+Out Of Date,OOD,0.1.2,https://addons.mozilla.org/firefox/downloads/file/random.xpi,https://addons.mozilla.org/en-US/firefox/addon/screen-recorder/,4366,['https://addons.mozilla.org/user-media/previews/full/random.png'],3.5455

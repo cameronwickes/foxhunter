@@ -1,0 +1,3 @@
+reason,name,URL,permissions
+Non Mozilla Install,NMI,https://random.com/random.xpi,"['webRequest', 'webRequestBlocking']"
+Interesting Permissions,PRM,https://addons.mozilla.org/firefox/downloads/file/random/random.xpi,"['webRequest', 'downloads', 'downloads.open', 'background', 'cookies']"

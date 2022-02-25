@@ -1,0 +1,4 @@
+name,URL,permissions
+EX,https://addons.mozilla.org/firefox/downloads/file/random/random.xpi,"['webRequest', 'webRequestBlocking']"
+NMI,https://random.com/random.xpi,"['webRequest', 'webRequestBlocking']"
+PRM,https://addons.mozilla.org/firefox/downloads/file/random/random.xpi,"['webRequest', 'downloads', 'downloads.open', 'background', 'cookies']"

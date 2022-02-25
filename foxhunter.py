@@ -859,8 +859,9 @@ class FoxHunter:
         internetCheck = True
         for addon in self.addons:
             # Check for addons not installed through Mozilla.
-            if "addons.mozilla.org" not in addon.URL:
-                self.analysedAddons["Non Mozilla Install"].append(addon)
+            if addon.URL != None:
+                if "addons.mozilla" not in addon.URL:
+                    self.analysedAddons["Non Mozilla Install"].append(addon)
 
             # Check for addons with low download rates/ratings.
             if addon.rating < 2.5 or addon.downloads < 1000:
@@ -887,11 +888,12 @@ class FoxHunter:
         """
         Performs analysis on gathered extensions.
 
-        1. Identifies extensions with dangerous/abnormal permissions
+        1. Finds extensions not installed through Mozilla store.
+        2. Finds extensions with dangerous/abnormal permissions.
         """
 
         # Define interesting permissions
-        self.analysedExtensions = {"Interesting Permissions": []}
+        self.analysedExtensions = {"Non Mozilla Install": [], "Interesting Permissions": []}
         permissions = [
             "background",
             "browserSettings",
@@ -905,8 +907,14 @@ class FoxHunter:
             "proxy",
         ]
 
-        # Identify extensions with said permissions and mark them.
+        
         for extension in self.extensions:
+            # Identify non mozilla installs.
+            if extension.URL != None:
+                if all([substring not in extension.URL for substring in ["addons.mozilla", "addons.cdn.mozilla"]]):
+                    self.analysedExtensions["Non Mozilla Install"].append(extension)
+
+            # Identify extensions with said permissions and mark them.
             for permission in permissions:
                 if permission in extension.permissions:
                     self.analysedExtensions["Interesting Permissions"].append(extension)
@@ -1226,52 +1234,53 @@ class FoxHunter:
             )
 
         # Produce user download timelines.
-        self.downloadHistory.sort(
-            key=lambda x: datetime.strptime(x.date, "%Y-%m-%d %H:%M:%S")
-        )
-        timelineDuration = datetime.strptime(
-            self.downloadHistory[-1].date, "%Y-%m-%d %H:%M:%S"
-        ) - datetime.strptime(self.downloadHistory[0].date, "%Y-%m-%d %H:%M:%S")
-
-        # If month time period or less.
-        if timelineDuration.days <= 30:
-            timeString = "%Y-%m-%d"
-        # If year time period or less.
-        if timelineDuration.days <= 365:
-            timeString = "%Y-%m"
-        # If greater than year time period.
-        else:
-            timeString = "%Y"
-
-        # Add to chart plots.
-        timeDictionary = {}
-        for download in self.downloadHistory:
-            date = datetime.strptime(
-                datetime.strptime(download.date, "%Y-%m-%d %H:%M:%S").strftime(
-                    timeString
-                ),
-                timeString,
+        if len(self.downloadHistory) > 0:
+            self.downloadHistory.sort(
+                key=lambda x: datetime.strptime(x.date, "%Y-%m-%d %H:%M:%S")
             )
-            if date in timeDictionary:
-                timeDictionary[date] += 1
+            timelineDuration = datetime.strptime(
+                self.downloadHistory[-1].date, "%Y-%m-%d %H:%M:%S"
+            ) - datetime.strptime(self.downloadHistory[0].date, "%Y-%m-%d %H:%M:%S")
+
+            # If month time period or less.
+            if timelineDuration.days <= 30:
+                timeString = "%Y-%m-%d"
+            # If year time period or less.
+            if timelineDuration.days <= 365:
+                timeString = "%Y-%m"
+            # If greater than year time period.
             else:
-                timeDictionary[date] = 1
+                timeString = "%Y"
 
-        # Plot the chart.
-        timePlots = list(timeDictionary.items())
-        plt.clf()
-        fig, ax = plt.subplots()
-        ax.plot(
-            [x[0] for x in timePlots], [x[1] for x in timePlots], color="dodgerblue"
-        )
-        ax.set(ylabel="Count", xlabel="Date", title="User Downloads Over Time")
+            # Add to chart plots.
+            timeDictionary = {}
+            for download in self.downloadHistory:
+                date = datetime.strptime(
+                    datetime.strptime(download.date, "%Y-%m-%d %H:%M:%S").strftime(
+                        timeString
+                    ),
+                    timeString,
+                )
+                if date in timeDictionary:
+                    timeDictionary[date] += 1
+                else:
+                    timeDictionary[date] = 1
 
-        for directory in self.diagramDirectories:
-            plt.savefig(
-                os.path.join(directory, "downloadsOverTime.png"),
-                dpi=400,
-                bbox_inches="tight",
+            # Plot the chart.
+            timePlots = list(timeDictionary.items())
+            plt.clf()
+            fig, ax = plt.subplots()
+            ax.plot(
+                [x[0] for x in timePlots], [x[1] for x in timePlots], color="dodgerblue"
             )
+            ax.set(ylabel="Count", xlabel="Date", title="User Downloads Over Time")
+
+            for directory in self.diagramDirectories:
+                plt.savefig(
+                    os.path.join(directory, "downloadsOverTime.png"),
+                    dpi=400,
+                    bbox_inches="tight",
+                )
 
         self.analysedAvailable.append(["analysedDownloads", self.analysedDownloads])
 

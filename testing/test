@@ -16,7 +16,7 @@ CMD = []
 
 
 def comment(text):
-    # Format nicely.
+    # Format nicely as to avoid 'report' script breaking.
     newtext = []
     for line in text.split("\n"):
         if line.strip():
@@ -51,7 +51,7 @@ def runTest(testQueue, outputQueue, thread):
         try:
             process = run(
                 CMD + [os.path.abspath(test)],
-                captureoutput=True,
+                capture_output=True,
                 env=os.environ,
                 text=True,
             )
@@ -224,19 +224,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--logging-level",
         "-l",
-        default=0,
-        choices=[0, 1, 2, 3],
+        default='0',
+        choices=['0', '1', '2', '3'],
         help="set the  # skip blank or space-only lineslogging level (0=low ... 3=high)",
     )
     parser.add_argument("--tapfile", default="test.log", help="file for tap output")
     arguments = parser.parse_args()
 
     # Set logging level based on command line arguments.
-    if arguments.logging_level == 1:
+    if arguments.logging_level == '1':
         level = logging.WARN
-    elif arguments.logging_level == 2:
+    elif arguments.logging_level == '2':
         level = logging.INFO
-    elif arguments.logging_level >= 3:
+    elif arguments.logging_level == '3':
         level = logging.DEBUG
     else:
         level = logging.ERROR
