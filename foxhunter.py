@@ -11,12 +11,16 @@ import sqlite3
 import ctypes
 import re
 from base64 import b64decode, b64encode
-from urllib import parse, request
+from urllib import parse
+import requests
 import lz4.block as lz4
-from datetime import datetime
+from datetime import datetime, timedelta
 import xml.etree.cElementTree as ET
 from asn1crypto import pem, x509
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
+import matplotlib.dates as mdates
+import itertools
 
 
 class Addon:
@@ -864,10 +868,8 @@ class FoxHunter:
             # Check for out of date addons.
             try:
                 if internetCheck:
-                    uf = request.urlopen(addon.storeURL)
-                    storeVersion = re.findall(
-                        r"\"version\":\"([0-9,.]*)", uf.read().decode("utf-8")
-                    )[0]
+                    html = requests.get(addon.storeURL).text
+                    storeVersion = re.findall(r"\"version\":\"([0-9,.]*)", html)[0]
                     if self.convertedVersion(addon.version) < self.convertedVersion(
                         storeVersion
                     ):
@@ -1117,10 +1119,14 @@ class FoxHunter:
         Performs analysis on gathered bookmarks.
 
         1. Finds deleted bookmarks.
-        2. Produces timeline of bookmarks.
         """
 
         self.analysedBookmarks = {"Deleted": []}
+
+        # Sort bookmarks according to date.
+        self.bookmarks.sort(
+            key=lambda x: datetime.strptime(x.dateAdded, "%Y-%m-%d %H:%M:%S")
+        )
 
         # Identify deleted bookmarks
         for bookmark in self.bookmarks:
@@ -1129,17 +1135,144 @@ class FoxHunter:
 
         self.analysedAvailable.append(["analysedBookmarks", self.analysedBookmarks])
 
-        # GENERATE TIMELINE
-
     def analyseDownloads(self):
         """
         Performs analysis on gathered downloads.
 
-        1. Finds downloads with interesting file names.
+        1. Finds possible malware by file names.
         2. Categorises downloads by file type for further analysis.
         3. Finds websites that content is commonly downloaded from.
         4. Produces user download graphs.
         """
+
+        self.analysedDownloads = {"Possible Malware": []}
+
+        # Attempt to download the malware list
+        try:
+            response = requests.get("https://fsrm.experiant.ca/api/v1/combined")
+            malwareList = json.loads(response.text)
+            for filter in malwareList["filters"]:
+                regex = r"^{}$".format(
+                    filter.translate(
+                        str.maketrans(
+                            {
+                                "[": "\[",
+                                "]": "\]",
+                                "+": "\+",
+                                "?": "\?",
+                                ".": "\.",
+                                "*": ".*",
+                            }
+                        )
+                    )
+                )
+                self.analysedDownloads["Possible Malware"] = self.analysedDownloads[
+                    "Possible Malware"
+                ] + [
+                    x
+                    for x in self.downloadHistory
+                    if re.match(regex, os.path.basename(x.downloadPath))
+                ]
+        except:
+            logging.error("[!] No Internet Connection. Skipping Malware Checks...")
+
+        # Categorise downloads by file type.
+        for download in self.downloadHistory:
+            # Sort based on filetype.
+            filename, file_extension = os.path.splitext(download.downloadPath)
+            if file_extension != "":
+                if file_extension in self.analysedDownloads:
+                    self.analysedDownloads[file_extension].append(download)
+                else:
+                    self.analysedDownloads[file_extension] = [download]
+
+        # Find websites that content is commonly downloaded from.
+        commonWebsites = {}
+        for download in self.downloadHistory:
+            splitURL = parse.urlsplit(download.URL).netloc
+            if splitURL in commonWebsites:
+                commonWebsites[splitURL] += 1
+            else:
+                commonWebsites[splitURL] = 1
+
+        sortedWebsites = list(commonWebsites.items())
+        sortedWebsites = sorted(
+            sorted(sortedWebsites, key=lambda x: x[1], reverse=True)[:10],
+            key=lambda x: x[1],
+            reverse=False,
+        )
+
+        # Plot the bar chart.
+        plt.clf()
+        fig, ax = plt.subplots()
+        ax.barh(
+            [x[0] for x in sortedWebsites],
+            [x[1] for x in sortedWebsites],
+            color="dodgerblue",
+        )
+        ax.set(
+            ylabel="Website",
+            xlabel="Download Count",
+            title="Top Ten Most Common Websites For Downloaded Files",
+        )
+        ax.get_xaxis().set_major_locator(mtick.MaxNLocator(integer=True))
+
+        for directory in self.diagramDirectories:
+            plt.savefig(
+                os.path.join(directory, "commonDownloadSites.png"),
+                dpi=400,
+                bbox_inches="tight",
+            )
+
+        # Produce user download timelines.
+        self.downloadHistory.sort(
+            key=lambda x: datetime.strptime(x.date, "%Y-%m-%d %H:%M:%S")
+        )
+        timelineDuration = datetime.strptime(
+            self.downloadHistory[-1].date, "%Y-%m-%d %H:%M:%S"
+        ) - datetime.strptime(self.downloadHistory[0].date, "%Y-%m-%d %H:%M:%S")
+
+        # If month time period or less.
+        if timelineDuration.days <= 30:
+            timeString = "%Y-%m-%d"
+        # If year time period or less.
+        if timelineDuration.days <= 365:
+            timeString = "%Y-%m"
+        # If greater than year time period.
+        else:
+            timeString = "%Y"
+
+        # Add to chart plots.
+        timeDictionary = {}
+        for download in self.downloadHistory:
+            date = datetime.strptime(
+                datetime.strptime(download.date, "%Y-%m-%d %H:%M:%S").strftime(
+                    timeString
+                ),
+                timeString,
+            )
+            if date in timeDictionary:
+                timeDictionary[date] += 1
+            else:
+                timeDictionary[date] = 1
+
+        # Plot the chart.
+        timePlots = list(timeDictionary.items())
+        plt.clf()
+        fig, ax = plt.subplots()
+        ax.plot(
+            [x[0] for x in timePlots], [x[1] for x in timePlots], color="dodgerblue"
+        )
+        ax.set(ylabel="Count", xlabel="Date", title="User Downloads Over Time")
+
+        for directory in self.diagramDirectories:
+            plt.savefig(
+                os.path.join(directory, "downloadsOverTime.png"),
+                dpi=400,
+                bbox_inches="tight",
+            )
+
+        self.analysedAvailable.append(["analysedDownloads", self.analysedDownloads])
 
     def analyseFormHistory(self):
         """
@@ -1187,10 +1320,14 @@ class FoxHunter:
 
         # Plot the bar chart.
         plt.clf()
-        plt.barh(labels, plots, color="dodgerblue")
-        plt.ylabel("Field Name & Value")
-        plt.xlabel("Use Count")
-        plt.title("Top Ten Most Common Autocomplete Form Fields")
+        fig, ax = plt.subplots()
+        ax.barh(labels, plots, color="dodgerblue")
+        ax.set(
+            ylabel="Field Name & Value",
+            xlabel="Use Count",
+            title="Top Ten Most Common Autocomplete Form Fields",
+        )
+        ax.get_xaxis().set_major_locator(mtick.MaxNLocator(integer=True))
 
         for directory in self.diagramDirectories:
             plt.savefig(
@@ -1204,7 +1341,145 @@ class FoxHunter:
         Performs analysis on gathered logins (if decrypted).
 
         1. Finds commonly used login usernames/passwords.
+        2. Finds common string patterns in usernames/passwords.
         """
+
+        self.analysedLogins = {"Commonly Used": []}
+
+        usernames = {}
+        passwords = {}
+
+        # Finds commonly used logins and passwords.
+        for login in self.logins:
+            if login.username != None:
+                if login.username in usernames:
+                    usernames[login.username] += 1
+                else:
+                    usernames[login.username] = 1
+            if login.password != None:
+                if login.password in passwords:
+                    passwords[login.password] += 1
+                else:
+                    passwords[login.password] = 1
+
+        # Calculate frequency and sort usernames in place.
+        usernamesList = list(usernames.items())
+        sortedUsernames = [
+            [x[0], x[1] / sum(n for _, n in usernamesList)] for x in usernamesList
+        ]
+        sortedUsernames = sorted(sortedUsernames, key=lambda x: x[1], reverse=True)[:10]
+
+        # Calculate frequency and sort passwords in place.
+        passwordsList = list(passwords.items())
+        sortedPasswords = [
+            [x[0], x[1] / sum(n for _, n in passwordsList)] for x in passwordsList
+        ]
+        sortedPasswords = sorted(sortedPasswords, key=lambda x: x[1], reverse=True)[:10]
+
+        # Add to analysed logins.
+        for login in self.logins:
+            if login.password in sortedPasswords or login.username in sortedUsernames:
+                self.analysedLogins["Commonly Used"].append(login)
+
+        self.analysedAvailable.append(["analysedLogins", self.analysedLogins])
+
+        # Find username and password patterns based on the longest common substring.
+        usernameStrings = [x[0] for x in usernamesList]
+        passwordStrings = [x[0] for x in passwordsList]
+        commonStrings = []
+
+        for userPass in [usernameStrings, passwordStrings]:
+            commonPatterns = {}
+            for firstString, secondString in itertools.combinations(userPass, 2):
+                if (
+                    firstString != secondString
+                    and len(firstString) > 0
+                    and len(secondString) > 0
+                ):
+                    substring = ""
+                    for i in range(len(firstString)):
+                        for j in range(len(secondString) - i + 1):
+                            if (
+                                j > len(substring)
+                                and firstString[i : i + j] in secondString
+                            ):
+                                substring = firstString[i : i + j]
+
+                    # 3 seems the right number of characters to match on...
+                    if len(substring) > 3:
+                        # Create the regex pattern.
+                        regexToCheck = [
+                            r"^.+{}$".format(substring),
+                            r"^{}.+$".format(substring),
+                            r"^.+{}.+$".format(substring),
+                        ]
+                        for regex in regexToCheck:
+                            if re.match(regex, firstString) and re.match(
+                                regex, secondString
+                            ):
+                                # Get the printable common pattern.
+                                commonPattern = regex.translate(
+                                    str.maketrans({"+": "*", "^": "", "$": "", ".": ""})
+                                )
+                                # Up the common pattern count
+                                if commonPattern in commonPatterns:
+                                    commonPatterns[commonPattern] += 1
+                                else:
+                                    commonPatterns[commonPattern] = 1
+
+            # Append to strings list.
+            commonStrings.append(list(commonPatterns.items()))
+
+        # Generate graph of commonly used passwords and patterns.
+        for diagram in [
+            [
+                sortedUsernames,
+                "Top Ten Most Common Usernames",
+                "Percentage",
+                "commonUsernames.png",
+            ],
+            [
+                sortedPasswords,
+                "Top Ten Most Common Passwords",
+                "Percentage",
+                "commonPasswords.png",
+            ],
+            [
+                commonStrings[0],
+                "Common Patterns Identified From Usernames",
+                "Count",
+                "commonUsernamePatterns.png",
+            ],
+            [
+                commonStrings[1],
+                "Common Patterns Identified From Passwords",
+                "Count",
+                "commonPasswordPatterns.png",
+            ],
+        ]:
+            plt.clf()
+            fig, ax = plt.subplots()
+            ax.barh(
+                [x[0] for x in diagram[0]],
+                [x[1] for x in diagram[0]],
+                color="dodgerblue",
+            )
+            ax.set(
+                ylabel=diagram[1].split(" ")[-1], xlabel=diagram[2], title=diagram[1]
+            )
+            if diagram[2] == "Percentage":
+                ax.get_xaxis().set_major_formatter(
+                    mtick.PercentFormatter(xmax=1, decimals=0)
+                )
+            else:
+                ax.get_xaxis().set_major_locator(mtick.MaxNLocator(integer=True))
+
+            for directory in self.diagramDirectories:
+                plt.savefig(
+                    os.path.join(directory, diagram[3]),
+                    dpi=400,
+                    bbox_inches="tight",
+                )
 
     def analyseCookies(self):
         """
@@ -1262,10 +1537,13 @@ class FoxHunter:
 
         # Plot the bar chart.
         plt.clf()
-        plt.barh(labels, plots, color="dodgerblue")
-        plt.ylabel("Query")
-        plt.xlabel("Use Frequency")
-        plt.title("Top Ten Most Common History Searches")
+        fig, ax = plt.subplots()
+        ax.barh(labels, plots, color="dodgerblue")
+        ax.set(
+            ylabel="Query",
+            xlabel="Use Frequency",
+            title="Top Ten Most Common History Searches",
+        )
 
         for directory in self.diagramDirectories:
             plt.savefig(
@@ -1281,6 +1559,570 @@ class FoxHunter:
         1. Produces graphs of browser usage over periods of time.
         2. Produces graphs of site browsing habits.
         """
+
+        searchEngines = [
+            ("answers.yahoo.com", 0),
+            ("sapo.pt", 0),
+            ("iol.pt", 0),
+            ("pesquisa.clix.pt", 0),
+            ("aeiou.pt", 0),
+            ("cuil.pt", 0),
+            ("fotos.sapo.pt", 0),
+            ("videos.sapo.pt", 0),
+            ("sabores.sapo.pt", 0),
+            ("jn.sapo.pt", 0),
+            ("dn.sapo.pt", 0),
+            ("rtp.pt", 0),
+            ("record.pt", 0),
+            ("correiodamanha.pt", 0),
+            ("correiomanha.pt", 0),
+            ("publico.clix.pt", 0),
+            ("xl.pt", 0),
+            ("abacho.com", 0),
+            ("alice.it", 0),
+            ("altavista.com", 0),
+            ("aolsearch.aol.com", 0),
+            ("as.starware.com", 0),
+            ("blogs.icerocket.com", 0),
+            ("blogsearch.google.com", 0),
+            ("busca.orange.es", 0),
+            ("buscador.lycos.es", 0),
+            ("buscador.terra.es", 0),
+            ("buscar.ozu.es", 0),
+            ("categorico.it", 0),
+            ("cuil.com", 0),
+            ("clusty.com", 0),
+            ("excite.com", 0),
+            ("excite.it", 0),
+            ("fastweb.it", 0),
+            ("fastbrowsersearch.com", 0),
+            ("godado.com", 0),
+            ("godado.it", 0),
+            ("gps.virgin.net", 0),
+            ("ilmotore.com", 0),
+            ("ithaki.net", 0),
+            ("kataweb.it", 0),
+            ("libero.it", 0),
+            ("lycos.it", 0),
+            ("search.aol.co.uk", 0),
+            ("search.arabia.msn.com", 0),
+            ("search.bbc.co.uk", 0),
+            ("search.conduit.com", 0),
+            ("search.icq.com", 0),
+            ("search.live.com", 0),
+            ("search.lycos.co.uk", 0),
+            ("search.lycos.com", 0),
+            ("search.msn.co.uk", 0),
+            ("search.msn.com", 0),
+            ("search.myway.com", 0),
+            ("search.mywebsearch.com", 0),
+            ("search.ntlworld.com", 0),
+            ("search.orange.co.uk", 0),
+            ("search.prodigy.msn.com", 0),
+            ("search.sweetim.com", 0),
+            ("search.virginmedia.com", 0),
+            ("search.yahoo.co.jp", 0),
+            ("search.yahoo.com", 0),
+            ("search.yahoo.jp", 0),
+            ("simpatico.ws", 0),
+            ("soso.com", 0),
+            ("suche.fireball.de", 0),
+            ("suche.web.de", 0),
+            ("suche.t-online.de", 0),
+            ("thespider.it", 0),
+            ("uk.altavista.com", 0),
+            ("uk.ask.com", 0),
+            ("uk.search.yahoo.com", 0),
+            ("alltheweb.com", 0),
+            ("ask.com", 0),
+            ("blueyonder.co.uk", 0),
+            ("feedster.com", 0),
+            ("google.ad", 0),
+            ("google.ae", 0),
+            ("google.af", 0),
+            ("google.ag", 0),
+            ("google.am", 0),
+            ("google.as", 0),
+            ("google.at", 0),
+            ("google.az", 0),
+            ("google.ba", 0),
+            ("google.be", 0),
+            ("google.bg", 0),
+            ("google.bi", 0),
+            ("google.biz", 0),
+            ("google.bo", 0),
+            ("google.bs", 0),
+            ("google.bz", 0),
+            ("google.ca", 0),
+            ("google.cc", 0),
+            ("google.cd", 0),
+            ("google.cg", 0),
+            ("google.ch", 0),
+            ("google.ci", 0),
+            ("google.cl", 0),
+            ("google.cn", 0),
+            ("google.co.at", 0),
+            ("google.co.bi", 0),
+            ("google.co.bw", 0),
+            ("google.co.ci", 0),
+            ("google.co.ck", 0),
+            ("google.co.cr", 0),
+            ("google.co.gg", 0),
+            ("google.co.gl", 0),
+            ("google.co.gy", 0),
+            ("google.co.hu", 0),
+            ("google.co.id", 0),
+            ("google.co.il", 0),
+            ("google.co.im", 0),
+            ("google.co.in", 0),
+            ("google.co.it", 0),
+            ("google.co.je", 0),
+            ("google.co.jp", 0),
+            ("google.co.ke", 0),
+            ("google.co.kr", 0),
+            ("google.co.ls", 0),
+            ("google.co.ma", 0),
+            ("google.co.mu", 0),
+            ("google.co.mw", 0),
+            ("google.co.nz", 0),
+            ("google.co.pn", 0),
+            ("google.co.th", 0),
+            ("google.co.tt", 0),
+            ("google.co.ug", 0),
+            ("google.co.uk", 0),
+            ("google.co.uz", 0),
+            ("google.co.ve", 0),
+            ("google.co.vi", 0),
+            ("google.co.za", 0),
+            ("google.co.zm", 0),
+            ("google.co.zw", 0),
+            ("google.com", 0),
+            ("google.com.af", 0),
+            ("google.com.ag", 0),
+            ("google.com.ai", 0),
+            ("google.com.ar", 0),
+            ("google.com.au", 0),
+            ("google.com.az", 0),
+            ("google.com.bd", 0),
+            ("google.com.bh", 0),
+            ("google.com.bi", 0),
+            ("google.com.bn", 0),
+            ("google.com.bo", 0),
+            ("google.com.br", 0),
+            ("google.com.bs", 0),
+            ("google.com.bz", 0),
+            ("google.com.cn", 0),
+            ("google.com.co", 0),
+            ("google.com.cu", 0),
+            ("google.com.do", 0),
+            ("google.com.ec", 0),
+            ("google.com.eg", 0),
+            ("google.com.et", 0),
+            ("google.com.fj", 0),
+            ("google.com.ge", 0),
+            ("google.com.gh", 0),
+            ("google.com.gi", 0),
+            ("google.com.gl", 0),
+            ("google.com.gp", 0),
+            ("google.com.gr", 0),
+            ("google.com.gt", 0),
+            ("google.com.gy", 0),
+            ("google.com.hk", 0),
+            ("google.com.hn", 0),
+            ("google.com.hr", 0),
+            ("google.com.jm", 0),
+            ("google.com.jo", 0),
+            ("google.com.kg", 0),
+            ("google.com.kh", 0),
+            ("google.com.ki", 0),
+            ("google.com.kz", 0),
+            ("google.com.lk", 0),
+            ("google.com.lv", 0),
+            ("google.com.ly", 0),
+            ("google.com.mt", 0),
+            ("google.com.mu", 0),
+            ("google.com.mw", 0),
+            ("google.com.mx", 0),
+            ("google.com.my", 0),
+            ("google.com.na", 0),
+            ("google.com.nf", 0),
+            ("google.com.ng", 0),
+            ("google.com.ni", 0),
+            ("google.com.np", 0),
+            ("google.com.nr", 0),
+            ("google.com.om", 0),
+            ("google.com.pa", 0),
+            ("google.com.pe", 0),
+            ("google.com.ph", 0),
+            ("google.com.pk", 0),
+            ("google.com.pl", 0),
+            ("google.com.pr", 0),
+            ("google.com.pt", 0),
+            ("google.com.py", 0),
+            ("google.com.qa", 0),
+            ("google.com.ru", 0),
+            ("google.com.sa", 0),
+            ("google.com.sb", 0),
+            ("google.com.sc", 0),
+            ("google.com.sg", 0),
+            ("google.com.sv", 0),
+            ("google.com.tj", 0),
+            ("google.com.tr", 0),
+            ("google.com.tt", 0),
+            ("google.com.tw", 0),
+            ("google.com.ua", 0),
+            ("google.com.uy", 0),
+            ("google.com.uz", 0),
+            ("google.com.ve", 0),
+            ("google.com.vi", 0),
+            ("google.com.vn", 0),
+            ("google.com.ws", 0),
+            ("google.cz", 0),
+            ("google.de", 0),
+            ("google.dj", 0),
+            ("google.dk", 0),
+            ("google.dm", 0),
+            ("google.ec", 0),
+            ("google.ee", 0),
+            ("google.es", 0),
+            ("google.fi", 0),
+            ("google.fm", 0),
+            ("google.fr", 0),
+            ("google.gd", 0),
+            ("google.ge", 0),
+            ("google.gf", 0),
+            ("google.gg", 0),
+            ("google.gl", 0),
+            ("google.gm", 0),
+            ("google.gp", 0),
+            ("google.gr", 0),
+            ("google.gy", 0),
+            ("google.hk", 0),
+            ("google.hn", 0),
+            ("google.hr", 0),
+            ("google.ht", 0),
+            ("google.hu", 0),
+            ("google.ie", 0),
+            ("google.im", 0),
+            ("google.in", 0),
+            ("google.info", 0),
+            ("google.is", 0),
+            ("google.it", 0),
+            ("google.je", 0),
+            ("google.jo", 0),
+            ("google.jobs", 0),
+            ("google.jp", 0),
+            ("google.kg", 0),
+            ("google.ki", 0),
+            ("google.kz", 0),
+            ("google.la", 0),
+            ("google.li", 0),
+            ("google.lk", 0),
+            ("google.lt", 0),
+            ("google.lu", 0),
+            ("google.lv", 0),
+            ("google.ma", 0),
+            ("google.md", 0),
+            ("google.mn", 0),
+            ("google.mobi", 0),
+            ("google.ms", 0),
+            ("google.mu", 0),
+            ("google.mv", 0),
+            ("google.mw", 0),
+            ("google.net", 0),
+            ("google.nf", 0),
+            ("google.nl", 0),
+            ("google.no", 0),
+            ("google.nr", 0),
+            ("google.nu", 0),
+            ("google.off.ai", 0),
+            ("google.ph", 0),
+            ("google.pk", 0),
+            ("google.pl", 0),
+            ("google.pn", 0),
+            ("google.pr", 0),
+            ("google.pt", 0),
+            ("google.ro", 0),
+            ("google.ru", 0),
+            ("google.rw", 0),
+            ("google.sc", 0),
+            ("google.se", 0),
+            ("google.sg", 0),
+            ("google.sh", 0),
+            ("google.si", 0),
+            ("google.sk", 0),
+            ("google.sm", 0),
+            ("google.sn", 0),
+            ("google.sr", 0),
+            ("google.st", 0),
+            ("google.tk", 0),
+            ("google.tm", 0),
+            ("google.to", 0),
+            ("google.tp", 0),
+            ("google.tt", 0),
+            ("google.tv", 0),
+            ("google.tw", 0),
+            ("google.ug", 0),
+            ("google.us", 0),
+            ("google.uz", 0),
+            ("google.vg", 0),
+            ("google.vn", 0),
+            ("google.vu", 0),
+            ("google.ws", 0),
+            ("hotbot.com", 0),
+            ("in.gr", 0),
+            ("mamma.com", 0),
+            ("mahalo.com", 0),
+            ("megasearching.net", 0),
+            ("mirago.co.uk", 0),
+            ("netscape.com", 0),
+            ("community.paglo.com", 0),
+            ("pathfinder.gr", 0),
+            ("phantis.com", 0),
+            ("robby.gr", 0),
+            ("sproose.com", 0),
+            ("technorati.com", 0),
+            ("tesco.net", 0),
+            ("tiscali.co.uk", 0),
+            ("bing.com", 0),
+            ("acbusca.com", 0),
+            ("atalhocerto.com.br", 0),
+            ("bastaclicar.com.br", 0),
+            ("bemrapido.com.br", 0),
+            ("br.altavista.com", 0),
+            ("br.search.yahoo.com", 0),
+            ("busca.uol.com.br", 0),
+            ("buscaaqui.com.br", 0),
+            ("buscador.terra.com.br", 0),
+            ("cade.search.yahoo.com", 0),
+            ("clickgratis.com.br", 0),
+            ("entrada.com.br", 0),
+            ("gigabusca.com.br", 0),
+            ("internetica.com.br", 0),
+            ("katatudo.com.br", 0),
+            ("minasplanet.com.br", 0),
+            ("speedybusca.com.br", 0),
+            ("vaibuscar.com.br", 0),
+            ("search.conduit.com", 0),
+            ("in.search.yahoo.com", 0),
+            ("rediff.com", 0),
+            ("guruji.com", 0),
+            ("duckduckgo.com", 0),
+        ]
+        socialMedia = [
+            ("facebook", 0),
+            ("twitter", 0),
+            ("tumblr", 0),
+            ("instagram", 0),
+            ("pinterest", 0),
+            ("linkedin", 0),
+            ("gmail", 0),
+            ("whatsapp", 0),
+            ("telegram", 0),
+            ("vk", 0),
+            ("signal", 0),
+        ]
+        commonWebsites = {}
+        browseTimes = {
+            "00:00": 0,
+            "01:00": 0,
+            "02:00": 0,
+            "03:00": 0,
+            "04:00": 0,
+            "05:00": 0,
+            "06:00": 0,
+            "07:00": 0,
+            "08:00": 0,
+            "09:00": 0,
+            "10:00": 0,
+            "11:00": 0,
+            "12:00": 0,
+            "13:00": 0,
+            "14:00": 0,
+            "15:00": 0,
+            "16:00": 0,
+            "17:00": 0,
+            "18:00": 0,
+            "19:00": 0,
+            "20:00": 0,
+            "21:00": 0,
+            "22:00": 0,
+            "23:00": 0,
+        }
+        browseDays = {
+            "Monday": 0,
+            "Tuesday": 0,
+            "Wednesday": 0,
+            "Thursday": 0,
+            "Friday": 0,
+            "Saturday": 0,
+            "Sunday": 0,
+        }
+
+        # Loop through browsing history.
+        for browse in self.browsingHistory:
+            # Gather most popular search engines.
+            searchEngines = [
+                (x[0], x[1] + 1) if x[0] in browse.URL else (x[0], x[1])
+                for x in searchEngines
+            ]
+
+            # Gather top 10 most visited sites.
+            splitURL = parse.urlsplit(browse.URL).netloc
+            if splitURL in commonWebsites:
+                commonWebsites[splitURL] += 1
+            else:
+                commonWebsites[splitURL] = 1
+
+            # Gather browse times.
+            browseTime = datetime.strptime(browse.date, "%Y-%m-%d %H:%M:%S").strftime(
+                "%H:00"
+            )
+            browseTimes[browseTime] += 1
+
+            # Gather browse days.
+            browseDay = datetime.strptime(browse.date, "%Y-%m-%d %H:%M:%S").strftime(
+                "%A"
+            )
+            browseDays[browseDay] += 1
+
+            # Gather most popular social media sites.
+            socialMedia = [
+                (x[0], x[1] + 1)
+                if x[0] in parse.urlsplit(browse.URL).netloc
+                else (x[0], x[1])
+                for x in socialMedia
+            ]
+
+        # Produce most popular search engines.
+        searchEngines = sorted(
+            sorted(
+                [x for x in searchEngines if x[1] != 0],
+                key=lambda x: x[1],
+                reverse=True,
+            )[:10],
+            key=lambda x: x[1],
+            reverse=False,
+        )
+
+        plt.clf()
+        fig, ax = plt.subplots()
+        ax.barh(
+            [x[0] for x in searchEngines],
+            [x[1] for x in searchEngines],
+            color="dodgerblue",
+        )
+        ax.set(
+            ylabel="Search Engine",
+            xlabel="Use Count",
+            title="Top Ten Most Common Search Engines",
+        )
+        ax.get_xaxis().set_major_locator(mtick.MaxNLocator(integer=True))
+
+        for directory in self.diagramDirectories:
+            plt.savefig(
+                os.path.join(directory, "commonSearchEngines.png"),
+                dpi=400,
+                bbox_inches="tight",
+            )
+
+        # Produce Top 10 most visited sites.
+        sortedWebsites = list(commonWebsites.items())
+        sortedWebsites = sorted(
+            sorted(sortedWebsites, key=lambda x: x[1], reverse=True)[:10],
+            key=lambda x: x[1],
+            reverse=False,
+        )
+
+        plt.clf()
+        fig, ax = plt.subplots()
+        ax.barh(
+            [x[0] for x in sortedWebsites],
+            [x[1] for x in sortedWebsites],
+            color="dodgerblue",
+        )
+        ax.set(
+            ylabel="Website",
+            xlabel="Use Count",
+            title="Top Ten Most Commonly Browsed Websites",
+        )
+        ax.get_xaxis().set_major_locator(mtick.MaxNLocator(integer=True))
+
+        for directory in self.diagramDirectories:
+            plt.savefig(
+                os.path.join(directory, "commonWebsites.png"),
+                dpi=400,
+                bbox_inches="tight",
+            )
+
+        # Produce times when user most active.
+        browseTimes = list(browseTimes.items())
+
+        plt.clf()
+        fig, ax = plt.subplots()
+        ax.plot(
+            [datetime.strptime(x[0], "%H:00") for x in browseTimes],
+            [x[1] for x in browseTimes],
+            color="dodgerblue",
+        )
+        ax.set(
+            ylabel="Sites Visited", xlabel="Time", title="Times When User Most Active"
+        )
+        ax.get_xaxis().set_major_formatter(mdates.DateFormatter("%H:00"))
+        ax.get_yaxis().set_major_locator(mtick.MaxNLocator(integer=True))
+
+        for directory in self.diagramDirectories:
+            plt.savefig(
+                os.path.join(directory, "activeTimes.png"),
+                dpi=400,
+                bbox_inches="tight",
+            )
+
+        # Produce days when user most active.
+        browseDays = list(browseDays.items())
+
+        plt.clf()
+        fig, ax = plt.subplots()
+        ax.plot(
+            [x[0] for x in browseDays], [x[1] for x in browseDays], color="dodgerblue"
+        )
+        ax.set(ylabel="Sites Visited", xlabel="Day", title="Days When User Most Active")
+        ax.get_yaxis().set_major_locator(mtick.MaxNLocator(integer=True))
+
+        for directory in self.diagramDirectories:
+            plt.savefig(
+                os.path.join(directory, "activeDays.png"),
+                dpi=400,
+                bbox_inches="tight",
+            )
+
+        # Produce social media activity.
+        socialMedia = sorted(
+            sorted(
+                [x for x in socialMedia if x[1] != 0], key=lambda x: x[1], reverse=True
+            )[:10],
+            key=lambda x: x[1],
+            reverse=False,
+        )
+
+        plt.clf()
+        fig, ax = plt.subplots()
+        ax.barh(
+            [x[0] for x in socialMedia], [x[1] for x in socialMedia], color="dodgerblue"
+        )
+        ax.set(
+            ylabel="Social Media Site",
+            xlabel="Use Count",
+            title="Top Social Media Sites Used",
+        )
+        ax.get_xaxis().set_major_locator(mtick.MaxNLocator(integer=True))
+
+        for directory in self.diagramDirectories:
+            plt.savefig(
+                os.path.join(directory, "commonSocialMediaSites.png"),
+                dpi=400,
+                bbox_inches="tight",
+            )
 
     def analyse(self):
         """Perform analysis on gathered data."""
@@ -1305,16 +2147,16 @@ class FoxHunter:
         self.analyseHistorySearches()
         logging.debug("[^] Finished Analysis of History Searches!\n")
         logging.debug("[*] Attempting to Analyse Download History...")
-        # Download History
+        self.analyseDownloads()
         logging.debug("[^] Finished Analysis of Download History!\n")
         logging.debug("[*] Attempting to Analyse Browsing History...")
-        # Browsing History
+        self.analyseBrowsingHistory()
         logging.debug("[^] Finished Analysis of Browsing History!\n")
         logging.debug("[*] Attempting to Analyse Bookmarks...")
         self.analyseBookmarks()
         logging.debug("[^] Finished Analysis of Bookmarks!\n")
         logging.debug("[*] Attempting to Analyse Logins...")
-        # Logins
+        self.analyseLogins()
         logging.debug("[^] Finished Analysis of Logins!")
 
 
@@ -2377,7 +3219,9 @@ def dumpAnalysed(foxHunter, type, directory):
 if __name__ == "__main__":
 
     # Remove plot warnings.
-    logging.getLogger("matplotlib.font_manager").disabled = True
+    logging.getLogger("matplotlib").setLevel(logging.CRITICAL)
+    logging.getLogger("requests").setLevel(logging.CRITICAL)
+    logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
     # Display foxhunter logo.
     print(
