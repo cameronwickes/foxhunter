@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+
+from __future__ import print_function
+import sys
+import re
+import argparse
+from collections import defaultdict
+
+
+def color(text, colour):
+    if sys.stdout.isatty():
+        clear = "\033[0m"
+
+        colors = {
+            "red": "\033[1m\033[91m",
+            "yellow": "\033[1m\033[93m",
+            "green": "\033[1m\033[92m",
+        }
+        return colors[colour] + text + clear
+    else:
+        return text
+
+
+def printCategory(tests):
+    if not arguments.summary:
+        for key in sorted(tests):
+            print("%-32s %4d" % (key, tests[key]))
+
+
+def pad(i):
+    return " " * i
+
+
+if __name__ == "__main__":
+
+    # Parse command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--summary', action="store_true", help="displays totals in each category")
+    parser.add_argument('tapfile', default="tests.log", nargs="?", help="file with tap output")
+    arguments = parser.parse_args()
+
+    # Create dictionaries for output.
+    errors = defaultdict(int)
+    skipped = defaultdict(int)
+    expected = defaultdict(int)
+    unexpected = defaultdict(int)
+    passed = defaultdict(int)
+
+    file = re.compile(r"^# (?:./)?(\S+\.t)$")
+
+    with open(arguments.tapfile) as tapFile:
+        for line in tapFile:
+
+            match = file.match(line)
+            if match:
+                filename = match.group(1)
+
+            if line.startswith("ok "):
+                passed[filename] += 1
+
+            if line.startswith("not "):
+                errors[filename] += 1
+
+            if line.startswith("# SKIP:"):
+                skipped[filename] += 1
+
+            if line.startswith("# EXPECTED_FAILURE:"):
+                expected[filename] += 1
+
+            if line.startswith("# UNEXPECTED_SUCCESS:"):
+                unexpected[filename] += 1
+
+
+    v = "{0:>5d}"
+    passed_str = "Passed:" + pad(24)
+    passed_int = v.format(sum(passed.values()))
+    error_str = "Failed:" + pad(24)
+    error_int = v.format(sum(errors.values()))
+    unexpected_str = "Unexpected successes:" + pad(10)
+    unexpected_int = v.format(sum(unexpected.values()))
+    skipped_str = "Skipped:" + pad(23)
+    skipped_int = v.format(sum(skipped.values()))
+    expected_str = "Expected failures:" + pad(13)
+    expected_int = v.format(sum(expected.values()))
+
+    if arguments.summary:
+        print(color(passed_str, "green"), passed_int)
+        print(color(error_str, "red"), error_int)
+        print(color(unexpected_str, "red"), unexpected_int)
+        print(color(skipped_str, "yellow"), skipped_int)
+        print(color(expected_str, "yellow"), expected_int)
+
+    else:
+        print(color(error_str, "red"))
+        printCategory(errors)
+        print("\n{}".format(color(unexpected_str, "red")))
+        printCategory(unexpected)
+        print("\n{}".format(color(skipped_str, "yellow")))
+        printCategory(skipped)
+        print("\n{}".format(color(expected_str, "yellow")))
+        printCategory(expected)
+
+    # If we encoutered any failures, return non-zero code
+    sys.exit(1 if int(error_int) or int(unexpected_int) else 0)

@@ -1,0 +1,257 @@
+#!/usr/bin/python3
+
+from __future__ import print_function
+import os
+import sys
+import glob
+import argparse
+import logging
+import time
+from multiprocessing import cpu_count
+from threading import Thread
+from subprocess import run
+from queue import Queue, Empty
+
+CMD = []
+
+
+def comment(text):
+    # Format nicely.
+    newtext = []
+    for line in text.split("\n"):
+        if line.strip():
+            if line.startswith("ok") or line.startswith("not ok"):
+                line = "# (original state) " + line
+            elif not line.startswith("# "):
+                line = "# " + line
+
+            newtext.append(line)
+
+    return "\n".join(newtext)
+
+
+def runTest(testQueue, outputQueue, thread):
+    # Record start time.
+    start = time.time()
+
+    # Attempt to test.
+    while True:
+
+        # Get the test.
+        try:
+            test = testQueue.get(block=True, timeout=0.2)
+        except Empty:
+            break
+
+        logging.info("[*] Running Test {}".format(test))
+
+        failed = False
+
+        # Try executing the test.
+        try:
+            process = run(
+                CMD + [os.path.abspath(test)],
+                captureoutput=True,
+                env=os.environ,
+                text=True,
+            )
+
+        # Test failed with exception.
+        except Exception as e:
+            logging.exception(e)
+            failed = True
+            reason = str(e)
+            processOutput = ""
+            processError = ""
+
+        # Test completed.
+        else:
+            # Check for return code that's non-zero.
+            if process.returncode:
+                logging.error(
+                    "[!] Test {} Exited With Code {}".format(test, process.returncode)
+                )
+                failed = True
+                reason = "Exit Code {}".format(process.returncode)
+            processOutput = process.stdout
+            processError = process.stderr
+
+        testBase = "# {0}\n".format(os.path.basename(test))
+
+        # Create output based on
+        if failed:
+            output = (
+                testBase,
+                comment(processOutput),
+                comment(processError),
+                "\nnot ok - {}\n".format(reason),
+            )
+        else:
+            output = (testBase, processOutput, processError)
+
+        logging.debug("[+] Collected Thread Output {}".format(output))
+
+        # Output and mark as done.
+        outputQueue.put(output)
+        testQueue.task_done()
+
+    logging.warning(
+        "Finished {} thread after {} seconds".format(
+            thread, round(time.time() - start, 3)
+        )
+    )
+
+
+class TestRunner(object):
+    def __init__(self):
+        # Create threads and tapfile.
+        self.threads = []
+        self.tapfile = open(arguments.tapfile, "w")
+
+        # Create queues for tests and outputs.
+        self.testQueue = Queue()
+        self.output = Queue()
+
+    def findTests(self):
+        # Loop through all tests with .t extension.
+        for potentialTest in glob.glob("*.t"):
+            # Check that test is executable.
+            if os.access(potentialTest, os.X_OK):
+                # Add test to correct queue.
+                logging.debug("[*] Added Test {} to Queue...".format(potentialTest))
+                self.testQueue.put(potentialTest)
+            else:
+                logging.error("[!] Test {} is not Executable...".format(potentialTest))
+
+        logging.info("[+] Found {} Tests.".format(self.testQueue.qsize()))
+
+    def createThreads(self):
+        # Create parallel threads.
+        self.threads.extend(
+            [
+                Thread(target=runTest, args=(self.testQueue, self.output, "Tests"))
+                for i in range(cpu_count())
+            ]
+        )
+
+        logging.info("[+] Spawned {} Threads to Run Tests...".format(len(self.threads)))
+
+    def startThreads(self):
+        # Start each thread.
+        for thread in self.threads:
+            logging.debug("[*] Starting Thread {}".format(thread))
+            thread.daemon = True
+            thread.start()
+
+    def getNumberOfTests(self):
+        # Return number of tests in queue.
+        return self.testQueue.qsize()
+
+    def testsFinished(self):
+        # Return True if all tests are finished.
+        for thread in self.threads:
+            if thread.is_alive():
+                return False
+        return True
+
+    def start(self):
+        # Find tests and create threads.
+        self.findTests()
+        self.createThreads()
+
+        # Get number of tests and set finished amount to zero.
+        finished = 0
+        total = self.getNumberOfTests()
+
+        # Start the threads.
+        self.startThreads()
+
+        # Keep testing while still tests to go.
+        while not self.testsFinished() or not self.output.empty():
+            # Try to get outputs.
+            try:
+                outputs = self.output.get(block=True, timeout=0.2)
+            except Empty:
+                continue
+
+            logging.debug("[*] Outputting The Following Taps: {}".format(outputs))
+
+            # Write the outputs to file/console.
+            for output in outputs:
+                self.tapfile.write(output)
+                if arguments.verbose:
+                    sys.stdout.write(output)
+
+            # Notify queue and add one to finished.
+            self.output.task_done()
+            finished += 1
+
+            logging.warning("[+] Finished {} Tests Out of {}.".format(finished, total))
+
+        if not self.testQueue.empty():
+            raise RuntimeError(
+                "[!] {} Tests Could Not Be Run...".format(self.getNumberOfTests())
+            )
+
+    def showReport(self):
+        # Flush interfaces.
+        self.tapfile.flush()
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+        # Return 'return code'.
+        return run(
+            CMD + [os.path.abspath("report"), "--summary", arguments.tapfile]
+        ).returncode
+
+
+def main():
+    # Create and start the runner.
+    runner = TestRunner()
+    runner.start()
+
+    # Return the 'return code' back to sys.exit().
+    return runner.showReport()
+
+
+if __name__ == "__main__":
+
+    # Get arguments from command line.
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="send tap output to console"
+    )
+    parser.add_argument(
+        "--logging-level",
+        "-l",
+        default=0,
+        choices=[0, 1, 2, 3],
+        help="set the  # skip blank or space-only lineslogging level (0=low ... 3=high)",
+    )
+    parser.add_argument("--tapfile", default="test.log", help="file for tap output")
+    arguments = parser.parse_args()
+
+    # Set logging level based on command line arguments.
+    if arguments.logging_level == 1:
+        level = logging.WARN
+    elif arguments.logging_level == 2:
+        level = logging.INFO
+    elif arguments.logging_level >= 3:
+        level = logging.DEBUG
+    else:
+        level = logging.ERROR
+
+    # Configure the logger
+    logging.basicConfig(
+        format="# !!! %(asctime)s - %(levelname)s - %(message)s",
+        level=level,
+    )
+
+    logging.debug("[*] Gathered the Following Arguments: {}".format(arguments))
+
+    # Try to perform tests.
+    try:
+        sys.exit(main())
+    except Exception as e:
+        logging.exception(e)
+        sys.exit(1)
