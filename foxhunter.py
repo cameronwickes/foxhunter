@@ -2242,7 +2242,7 @@ def chooseFirefoxProfileDirectory():
     """
     firefoxProfiles = []
 
-    logging.debug("[*] No Profile Directory Specified - Finding Firefox Profiles...\n")
+    logging.info("[*] No Profile Directory Specified - Finding Firefox Profiles...\n")
     # Recursively search from root directory.
     for root, dirnames, filenames in os.walk("/"):
         # Find profiles.ini file.
@@ -3172,7 +3172,12 @@ def dumpAnalysed(foxHunter, type, directory):
             .title()
         )
         filename = "{}.{}".format(attribute, type)
-
+        
+        # Check that there is data to dump.
+        gatheredValues = [x for x in values.items() if x[1] != []]
+        if gatheredValues == []:
+            continue
+            
         # Deal with CSV formatting.
         if type == "csv":
             try:
