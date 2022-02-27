@@ -1324,7 +1324,7 @@ class FoxHunter:
         # Generate graph of commonly used fields.
         labels = []
         plots = []
-        for formField in self.analysedFormHistory["Most Common"]:
+        for formField in reversed(self.analysedFormHistory["Most Common"]):
             labels.append("{}={}".format(formField.name, formField.value))
             plots.append(formField.useCount)
 

@@ -30,6 +30,11 @@ class TestXML(unittest.TestCase):
             with open(os.path.join(self.expected, "cookies.xml")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
 
+    def testDumpedFormHistory(self):
+        with open(os.path.join(self.outputDir, "formHistory.xml")) as actualOutput:
+            with open(os.path.join(self.expected, "formHistory.xml")) as expectedOutput:
+                assert(actualOutput.readlines() == expectedOutput.readlines())
+
     def testAnalysedAddons(self):
         with open(os.path.join(self.outputDir, "analysedAddons.xml")) as actualOutput:
             with open(os.path.join(self.expected, "analysedAddons.xml")) as expectedOutput:
@@ -43,6 +48,12 @@ class TestXML(unittest.TestCase):
     def testAnalysedCookies(self):
         with open(os.path.join(self.outputDir, "analysedCookies.xml")) as actualOutput:
             with open(os.path.join(self.expected, "analysedCookies.xml")) as expectedOutput:
+                assert(actualOutput.readlines() == expectedOutput.readlines())
+    
+    def testAnalysedFormHistory(self):
+        with open(os.path.join(self.outputDir, "analysedFormHistory.xml")) as actualOutput:
+            with open(os.path.join(self.expected, "analysedFormHistory.xml")) as expectedOutput:
+                print(actualOutput.readlines(), expectedOutput.readlines())
                 assert(actualOutput.readlines() == expectedOutput.readlines())
     
 

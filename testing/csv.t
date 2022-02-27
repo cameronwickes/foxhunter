@@ -29,6 +29,11 @@ class TestCSV(unittest.TestCase):
         with open(os.path.join(self.outputDir, "cookies.csv")) as actualOutput:
             with open(os.path.join(self.expected, "cookies.csv")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
+    
+    def testDumpedFormHistory(self):
+        with open(os.path.join(self.outputDir, "formHistory.csv")) as actualOutput:
+            with open(os.path.join(self.expected, "formHistory.csv")) as expectedOutput:
+                assert(actualOutput.readlines() == expectedOutput.readlines())
 
     def testAnalysedAddons(self):
         with open(os.path.join(self.outputDir, "analysedAddons.csv")) as actualOutput:
@@ -43,6 +48,11 @@ class TestCSV(unittest.TestCase):
     def testAnalysedCookies(self):
         with open(os.path.join(self.outputDir, "analysedCookies.csv")) as actualOutput:
             with open(os.path.join(self.expected, "analysedCookies.csv")) as expectedOutput:
+                assert(actualOutput.readlines() == expectedOutput.readlines())
+    
+    def testAnalysedFormHistory(self):
+        with open(os.path.join(self.outputDir, "analysedFormHistory.csv")) as actualOutput:
+            with open(os.path.join(self.expected, "analysedFormHistory.csv")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
     
 

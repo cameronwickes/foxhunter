@@ -29,6 +29,11 @@ class TestJSON(unittest.TestCase):
             with open(os.path.join(self.expected, "cookies.json")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
     
+    def testDumpedFormHistory(self):
+        with open(os.path.join(self.outputDir, "formHistory.json")) as actualOutput:
+            with open(os.path.join(self.expected, "formHistory.json")) as expectedOutput:
+                assert(actualOutput.readlines() == expectedOutput.readlines())
+
     def testAnalysedAddons(self):
         with open(os.path.join(self.outputDir, "analysedAddons.json")) as actualOutput:
             with open(os.path.join(self.expected, "analysedAddons.json")) as expectedOutput:
@@ -42,6 +47,11 @@ class TestJSON(unittest.TestCase):
     def testAnalysedCookies(self):
         with open(os.path.join(self.outputDir, "analysedCookies.json")) as actualOutput:
             with open(os.path.join(self.expected, "analysedCookies.json")) as expectedOutput:
+                assert(actualOutput.readlines() == expectedOutput.readlines())
+    
+    def testAnalysedFormHistory(self):
+        with open(os.path.join(self.outputDir, "analysedFormHistory.json")) as actualOutput:
+            with open(os.path.join(self.expected, "analysedFormHistory.json")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
 
 

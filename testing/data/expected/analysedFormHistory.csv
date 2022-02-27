@@ -1,0 +1,18 @@
+reason,name,value,useCount
+PII,user,randomUser,1
+PII,pass,randomPass,1
+PII,login,randomLogin,1
+PII,name,randomName,1
+PII,phone,randomPhone,1
+PII,email,randomEmail,1
+PII,address,randomAddress,1
+Most Common,MU-1,V1,20
+Most Common,MU-2,V2,18
+Most Common,MU-3,V3,16
+Most Common,MU-4,V4,14
+Most Common,MU-5,V5,12
+Most Common,MU-6,V6,10
+Most Common,MU-7,V7,8
+Most Common,MU-8,V8,6
+Most Common,MU-9,V9,4
+Most Common,MU-10,V10,2
