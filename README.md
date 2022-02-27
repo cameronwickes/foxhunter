@@ -127,6 +127,7 @@ To verify the program is working as intended, a set of pregenerated testing prof
 
 Saved login data for the former profile is unlocked. Saved login data for the latter is protected using the master password in `testing/data/master-password`, which can also be obtained using the `getPassword` function within tests.
 
+**NOTE:** Testing is done on GitHub runners with a UTC timezone. If you attempt to test on a machine that is not running on UTC time, tests may fail.
 <br/>
 
 ## ⚖️ License
