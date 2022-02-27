@@ -6,44 +6,44 @@ import unittest
 from simpletap.fox import fox
 
 
-class TestCSV(unittest.TestCase):
+class TestXML(unittest.TestCase):
     def setUp(self):
         self.profile = os.path.join(fox.getProfiles(), "profile")
         self.profileWithPassword = os.path.join(fox.getProfiles(), "profilePassword")
         self.expected = os.path.join(fox.getProfiles(), "expected")
         self.password = fox.getPassword()
-        self.outputDir = os.path.join(fox.getProfiles(), "outputCSV")
+        self.outputDir = os.path.join(fox.getProfiles(), "outputXML")
         
 
     def testDumpedAddons(self):
-        with open(os.path.join(self.outputDir, "addons.csv")) as actualOutput:
-            with open(os.path.join(self.expected, "addons.csv")) as expectedOutput:
+        with open(os.path.join(self.outputDir, "addons.xml")) as actualOutput:
+            with open(os.path.join(self.expected, "addons.xml")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
 
     def testDumpedExtensions(self):
-        with open(os.path.join(self.outputDir, "extensions.csv")) as actualOutput:
-            with open(os.path.join(self.expected, "extensions.csv")) as expectedOutput:
+        with open(os.path.join(self.outputDir, "extensions.xml")) as actualOutput:
+            with open(os.path.join(self.expected, "extensions.xml")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
 
     def testDumpedExtensions(self):
-        with open(os.path.join(self.outputDir, "cookies.csv")) as actualOutput:
-            with open(os.path.join(self.expected, "cookies.csv")) as expectedOutput:
+        with open(os.path.join(self.outputDir, "cookies.xml")) as actualOutput:
+            with open(os.path.join(self.expected, "cookies.xml")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
 
     
     def testAnalysedAddons(self):
-        with open(os.path.join(self.outputDir, "analysedAddons.csv")) as actualOutput:
-            with open(os.path.join(self.expected, "analysedAddons.csv")) as expectedOutput:
+        with open(os.path.join(self.outputDir, "analysedAddons.xml")) as actualOutput:
+            with open(os.path.join(self.expected, "analysedAddons.xml")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
 
     def testAnalysedExtensions(self):
-        with open(os.path.join(self.outputDir, "analysedExtensions.csv")) as actualOutput:
-            with open(os.path.join(self.expected, "analysedExtensions.csv")) as expectedOutput:
+        with open(os.path.join(self.outputDir, "analysedExtensions.xml")) as actualOutput:
+            with open(os.path.join(self.expected, "analysedExtensions.xml")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
 
     def testAnalysedCookies(self):
-        with open(os.path.join(self.outputDir, "analysedCookies.csv")) as actualOutput:
-            with open(os.path.join(self.expected, "analysedCookies.csv")) as expectedOutput:
+        with open(os.path.join(self.outputDir, "analysedCookies.xml")) as actualOutput:
+            with open(os.path.join(self.expected, "analysedCookies.xml")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
     
 
@@ -53,13 +53,13 @@ if __name__ == "__main__":
     from simpletap import TAPTestRunner
 
     profile = os.path.join(fox.getProfiles(), "profile")
-    outputDir = os.path.join(fox.getProfiles(), "outputCSV")
+    outputDir = os.path.join(fox.getProfiles(), "outputXML")
     
     if os.path.isdir(outputDir):
         shutil.rmtree(outputDir)
     os.mkdir(outputDir)
 
-    cmd = fox.getScript() + ["-p", profile, "-oC", outputDir, "-A"]
+    cmd = fox.getScript() + ["-p", profile, "-oX", outputDir, "-A"]
     _ = fox.run(cmd, workdir=fox.getProfiles())
 
     unittest.main(testRunner=TAPTestRunner(buffer=True), exit=False)

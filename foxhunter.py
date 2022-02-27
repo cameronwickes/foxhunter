@@ -1503,15 +1503,15 @@ class FoxHunter:
         for cookie in self.cookies:
             # Check for base64.
             try:
-                if b64encode(b64decode(cookie.value)) == cookie.value:
-                    self.analysedCookies["Base64"].append(cookie)
+                assert(b64encode(b64decode(cookie.value)).decode("utf-8") == cookie.value)
+                self.analysedCookies["Base64"].append(cookie)
             except:
                 pass
 
             # Check for hexadecimal.
             try:
-                if int("cookie.value", 16):
-                    self.analysedCookies["Hexadecimal"].append(cookie)
+                assert(int(cookie.value, 16))
+                self.analysedCookies["Hexadecimal"].append(cookie)
             except:
                 pass
 
