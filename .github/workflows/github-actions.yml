@@ -4,6 +4,8 @@ jobs:
   Run-Tests:
     runs-on: ubuntu-latest
     steps:
+      - name: Print Date
+        run: date
       - name: Check Out Repository Code
         uses: actions/checkout@v2
       - name: Set up Python 3.10
