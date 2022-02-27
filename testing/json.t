@@ -24,7 +24,7 @@ class TestJSON(unittest.TestCase):
             with open(os.path.join(self.expected, "extensions.json")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
 
-    def testDumpedExtensions(self):
+    def testDumpedCookies(self):
         with open(os.path.join(self.outputDir, "cookies.json")) as actualOutput:
             with open(os.path.join(self.expected, "cookies.json")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
