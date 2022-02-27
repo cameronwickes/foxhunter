@@ -30,7 +30,6 @@ class TestXML(unittest.TestCase):
             with open(os.path.join(self.expected, "cookies.xml")) as expectedOutput:
                 assert(actualOutput.readlines() == expectedOutput.readlines())
 
-    
     def testAnalysedAddons(self):
         with open(os.path.join(self.outputDir, "analysedAddons.xml")) as actualOutput:
             with open(os.path.join(self.expected, "analysedAddons.xml")) as expectedOutput:

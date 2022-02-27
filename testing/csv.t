@@ -28,11 +28,8 @@ class TestCSV(unittest.TestCase):
     def testDumpedCookies(self):
         with open(os.path.join(self.outputDir, "cookies.csv")) as actualOutput:
             with open(os.path.join(self.expected, "cookies.csv")) as expectedOutput:
-                print(actualOutput.readlines())
-                print(expectedOutput.readlines())
                 assert(actualOutput.readlines() == expectedOutput.readlines())
 
-    
     def testAnalysedAddons(self):
         with open(os.path.join(self.outputDir, "analysedAddons.csv")) as actualOutput:
             with open(os.path.join(self.expected, "analysedAddons.csv")) as expectedOutput:

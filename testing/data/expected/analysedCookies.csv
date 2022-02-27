@@ -1,4 +1,4 @@
 reason,host,name,value,expiry,lastAccessed,creationTime,secure,httpOnly,sameSite
-Base64,fake.com/,base64Cookie,dGVzdGluZw==,2022-08-14 15:04:25,2022-02-27 10:14:27,2021-07-20 15:04:25,True,True,True
-Hexadecimal,fake.com/,hexCookie,74657374696e67,2022-08-14 15:04:25,2022-02-27 10:14:27,2021-07-20 15:04:25,True,True,True
-GA Cookie,fake.com/,_ga,GA.1.2.12345678.12345678,2022-08-14 15:04:25,2022-02-27 10:14:27,2021-07-20 15:04:25,True,True,True
+Base64,fake.com/,base64Cookie,dGVzdGluZw==,2022-08-14 14:04:25,2022-02-27 10:14:27,2021-07-20 14:04:25,True,True,True
+Hexadecimal,fake.com/,hexCookie,74657374696e67,2022-08-14 14:04:25,2022-02-27 10:14:27,2021-07-20 14:04:25,True,True,True
+GA Cookie,fake.com/,_ga,GA.1.2.12345678.12345678,2022-08-14 14:04:25,2022-02-27 10:14:27,2021-07-20 14:04:25,True,True,True
