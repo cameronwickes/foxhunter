@@ -17,3 +17,9 @@ jobs:
       - name: Run Automated Tests
         working-directory: ${{ github.workspace }}/testing
         run: ${{ github.workspace }}/testing/test
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v1
+        with:
+          name: testing/test-results
+          path: test.log
