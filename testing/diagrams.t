@@ -15,20 +15,10 @@ class TestDiagrams(unittest.TestCase):
         self.outputDir = os.path.join(fox.getProfiles(), "outputDiagrams/diagrams")
 
     def testDumpedDiagrams(self):
-        expectedCertificateFilenames = glob(self.expected + "/*")
-        actualCertificateFilenames = glob(self.outputDir + "/*")
-        expectedHashes = []
-        actualHashes = []
-
-        for filenames, hashList in [
-            (expectedCertificateFilenames, expectedHashes),
-            (actualCertificateFilenames, actualHashes),
-        ]:
-            for file in filenames:
-                with open(file, "rb") as fileHandle:
-                    hashList.append(hashlib.sha256(fileHandle.read()).hexdigest())
-        print(expectedHashes, actualHashes)
-        assert collections.Counter(expectedHashes) == collections.Counter(actualHashes)
+        expectedDiagramFilenames = [os.path.basename(x) for x in glob(self.expected + "/*")]
+        actualDiagramFilenames = [os.path.basename(x) for x in glob(self.outputDir + "/*")]
+        
+        assert collections.Counter(actualDiagramFilenames) == collections.Counter(expectedDiagramFilenames)
 
 
 if __name__ == "__main__":
