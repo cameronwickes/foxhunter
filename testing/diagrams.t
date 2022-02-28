@@ -27,7 +27,7 @@ class TestDiagrams(unittest.TestCase):
             for file in filenames:
                 with open(file, "rb") as fileHandle:
                     hashList.append(hashlib.sha256(fileHandle.read()).hexdigest())
-
+        print(expectedHashes, actualHashes)
         assert collections.Counter(expectedHashes) == collections.Counter(actualHashes)
 
 
