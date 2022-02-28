@@ -40,8 +40,34 @@ class TestCSV(unittest.TestCase):
 
     def testDumpedLogins(self):
         with open(os.path.join(self.outputDir, "logins.csv")) as actualOutput:
+            with open(os.path.join(self.expected, "logins.csv")) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedURLClickthroughs(self):
+        with open(
+            os.path.join(self.outputDir, "urlSearchClickthroughs.csv")
+        ) as actualOutput:
             with open(
-                os.path.join(self.expected, "logins.csv")
+                os.path.join(self.expected, "urlSearchClickthroughs.csv")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedDownloads(self):
+        with open(os.path.join(self.outputDir, "downloadHistory.csv")) as actualOutput:
+            with open(
+                os.path.join(self.expected, "downloadHistory.csv")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedBookmarks(self):
+        with open(os.path.join(self.outputDir, "bookmarks.csv")) as actualOutput:
+            with open(os.path.join(self.expected, "bookmarks.csv")) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedBrowsingHistory(self):
+        with open(os.path.join(self.outputDir, "browsingHistory.csv")) as actualOutput:
+            with open(
+                os.path.join(self.expected, "browsingHistory.csv")
             ) as expectedOutput:
                 assert actualOutput.readlines() == expectedOutput.readlines()
 
@@ -87,13 +113,39 @@ class TestCSV(unittest.TestCase):
                 assert actualOutput.readlines() == expectedOutput.readlines()
 
     def testAnalysedLogins(self):
-        with open(
-            os.path.join(self.outputDir, "analysedLogins.csv")
-        ) as actualOutput:
+        with open(os.path.join(self.outputDir, "analysedLogins.csv")) as actualOutput:
             with open(
                 os.path.join(self.expected, "analysedLogins.csv")
             ) as expectedOutput:
                 assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testAnalysedURLClickthroughs(self):
+        with open(
+            os.path.join(self.outputDir, "analysedUrlSearchClickthroughs.csv")
+        ) as actualOutput:
+            with open(
+                os.path.join(self.expected, "analysedUrlSearchClickthroughs.csv")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testAnalysedDownloads(self):
+        with open(
+            os.path.join(self.outputDir, "analysedDownloads.csv")
+        ) as actualOutput:
+            with open(
+                os.path.join(self.expected, "analysedDownloads.csv")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testAnalysedBookmarks(self):
+        with open(
+            os.path.join(self.outputDir, "analysedBookmarks.csv")
+        ) as actualOutput:
+            with open(
+                os.path.join(self.expected, "analysedBookmarks.csv")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
 
 if __name__ == "__main__":
     from simpletap import TAPTestRunner

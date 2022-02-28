@@ -42,8 +42,34 @@ class TestJSON(unittest.TestCase):
 
     def testDumpedLogins(self):
         with open(os.path.join(self.outputDir, "logins.json")) as actualOutput:
+            with open(os.path.join(self.expected, "logins.json")) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedURLClickthroughs(self):
+        with open(
+            os.path.join(self.outputDir, "urlSearchClickthroughs.json")
+        ) as actualOutput:
             with open(
-                os.path.join(self.expected, "logins.json")
+                os.path.join(self.expected, "urlSearchClickthroughs.json")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedDownloads(self):
+        with open(os.path.join(self.outputDir, "downloadHistory.json")) as actualOutput:
+            with open(
+                os.path.join(self.expected, "downloadHistory.json")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedBookmarks(self):
+        with open(os.path.join(self.outputDir, "bookmarks.json")) as actualOutput:
+            with open(os.path.join(self.expected, "bookmarks.json")) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedBrowsingHistory(self):
+        with open(os.path.join(self.outputDir, "browsingHistory.json")) as actualOutput:
+            with open(
+                os.path.join(self.expected, "browsingHistory.json")
             ) as expectedOutput:
                 assert actualOutput.readlines() == expectedOutput.readlines()
 
@@ -89,13 +115,39 @@ class TestJSON(unittest.TestCase):
                 assert actualOutput.readlines() == expectedOutput.readlines()
 
     def testAnalysedLogins(self):
-        with open(
-            os.path.join(self.outputDir, "analysedLogins.json")
-        ) as actualOutput:
+        with open(os.path.join(self.outputDir, "analysedLogins.json")) as actualOutput:
             with open(
                 os.path.join(self.expected, "analysedLogins.json")
             ) as expectedOutput:
                 assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testAnalysedURLClickthroughs(self):
+        with open(
+            os.path.join(self.outputDir, "analysedUrlSearchClickthroughs.json")
+        ) as actualOutput:
+            with open(
+                os.path.join(self.expected, "analysedUrlSearchClickthroughs.json")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testAnalysedDownloads(self):
+        with open(
+            os.path.join(self.outputDir, "analysedDownloads.json")
+        ) as actualOutput:
+            with open(
+                os.path.join(self.expected, "analysedDownloads.json")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testAnalysedBookmarks(self):
+        with open(
+            os.path.join(self.outputDir, "analysedBookmarks.json")
+        ) as actualOutput:
+            with open(
+                os.path.join(self.expected, "analysedBookmarks.json")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
 
 if __name__ == "__main__":
     from simpletap import TAPTestRunner

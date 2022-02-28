@@ -37,11 +37,37 @@ class TestXML(unittest.TestCase):
                 os.path.join(self.expected, "certificates.xml")
             ) as expectedOutput:
                 assert actualOutput.readlines() == expectedOutput.readlines()
-    
+
     def testDumpedLogins(self):
         with open(os.path.join(self.outputDir, "logins.xml")) as actualOutput:
+            with open(os.path.join(self.expected, "logins.xml")) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedURLClickthroughs(self):
+        with open(
+            os.path.join(self.outputDir, "urlSearchClickthroughs.xml")
+        ) as actualOutput:
             with open(
-                os.path.join(self.expected, "logins.xml")
+                os.path.join(self.expected, "urlSearchClickthroughs.xml")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedDownloads(self):
+        with open(os.path.join(self.outputDir, "downloadHistory.xml")) as actualOutput:
+            with open(
+                os.path.join(self.expected, "downloadHistory.xml")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedBookmarks(self):
+        with open(os.path.join(self.outputDir, "bookmarks.xml")) as actualOutput:
+            with open(os.path.join(self.expected, "bookmarks.xml")) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testDumpedBrowsingHistory(self):
+        with open(os.path.join(self.outputDir, "browsingHistory.xml")) as actualOutput:
+            with open(
+                os.path.join(self.expected, "browsingHistory.xml")
             ) as expectedOutput:
                 assert actualOutput.readlines() == expectedOutput.readlines()
 
@@ -87,11 +113,36 @@ class TestXML(unittest.TestCase):
                 assert actualOutput.readlines() == expectedOutput.readlines()
 
     def testAnalysedLogins(self):
-        with open(
-            os.path.join(self.outputDir, "analysedLogins.xml")
-        ) as actualOutput:
+        with open(os.path.join(self.outputDir, "analysedLogins.xml")) as actualOutput:
             with open(
                 os.path.join(self.expected, "analysedLogins.xml")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testAnalysedURLClickthroughs(self):
+        with open(
+            os.path.join(self.outputDir, "analysedUrlSearchClickthroughs.xml")
+        ) as actualOutput:
+            with open(
+                os.path.join(self.expected, "analysedUrlSearchClickthroughs.xml")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testAnalysedDownloads(self):
+        with open(
+            os.path.join(self.outputDir, "analysedDownloads.xml")
+        ) as actualOutput:
+            with open(
+                os.path.join(self.expected, "analysedDownloads.xml")
+            ) as expectedOutput:
+                assert actualOutput.readlines() == expectedOutput.readlines()
+
+    def testAnalysedBookmarks(self):
+        with open(
+            os.path.join(self.outputDir, "analysedBookmarks.xml")
+        ) as actualOutput:
+            with open(
+                os.path.join(self.expected, "analysedBookmarks.xml")
             ) as expectedOutput:
                 assert actualOutput.readlines() == expectedOutput.readlines()
 

@@ -261,9 +261,9 @@ class FormField:
         self.useCount = useCount
 
 
-class HistorySearch:
+class URLSearchClickthrough:
     """
-    Stores data relating to a browsing history search.
+    Stores data relating to a URL clickthrough search.
     """
 
     def __init__(
@@ -275,10 +275,10 @@ class HistorySearch:
         Parameters
         ----------
         query : str
-        The query string to search for within browsing history.
+        The query string to search for within URL clickthrough history.
 
         useFrequency : str
-        The frequency that the user has searched for this query in browsing history.
+        The frequency that the user has searched for this query in URL clickthrough history.
         """
         self.query = query
         self.useFrequency = useFrequency
@@ -766,7 +766,7 @@ class FoxHunter:
         certificates,
         cookies,
         formHistory,
-        historySearches,
+        urlSearchClickthroughs,
         downloadHistory,
         browsingHistory,
         bookmarks,
@@ -790,8 +790,8 @@ class FoxHunter:
         formHistory : [FormField]
         List of autocomplete form history fields.
 
-        historySearches : [HistorySearch]
-        List of history searches.
+        urlSearchClickthroughs : [URLSearchClickthrough]
+        List of URL search clickthroughs.
 
         downloadHistory : [Download]
         List of downloads.
@@ -811,7 +811,7 @@ class FoxHunter:
         self.certificates = certificates
         self.cookies = cookies
         self.formHistory = formHistory
-        self.historySearches = historySearches
+        self.urlSearchClickthroughs = urlSearchClickthroughs
         self.downloadHistory = downloadHistory
         self.browsingHistory = browsingHistory
         self.bookmarks = bookmarks
@@ -1244,10 +1244,10 @@ class FoxHunter:
 
             # If month time period or less.
             if timelineDuration.days <= 30:
-                timeString = "%Y-%m-%d"
+                timeString = "%d"
             # If year time period or less.
-            if timelineDuration.days <= 365:
-                timeString = "%Y-%m"
+            elif timelineDuration.days <= 365:
+                timeString = "%m"
             # If greater than year time period.
             else:
                 timeString = "%Y"
@@ -1255,12 +1255,9 @@ class FoxHunter:
             # Add to chart plots.
             timeDictionary = {}
             for download in self.downloadHistory:
-                date = datetime.strptime(
-                    datetime.strptime(download.date, "%Y-%m-%d %H:%M:%S").strftime(
+                date = datetime.strptime(download.date, "%Y-%m-%d %H:%M:%S").strftime(
                         timeString
-                    ),
-                    timeString,
-                )
+                    )
                 if date in timeDictionary:
                     timeDictionary[date] += 1
                 else:
@@ -1271,7 +1268,7 @@ class FoxHunter:
             plt.clf()
             fig, ax = plt.subplots()
             ax.plot(
-                [x[0] for x in timePlots], [x[1] for x in timePlots], color="dodgerblue"
+                [x[0] for x in timePlots], [x[1] for x in timePlots], "-o", color="dodgerblue" 
             )
             ax.set(ylabel="Count", xlabel="Date", title="User Downloads Over Time")
 
@@ -1521,29 +1518,29 @@ class FoxHunter:
 
         self.analysedAvailable.append(["analysedCookies", self.analysedCookies])
 
-    def analyseHistorySearches(self):
+    def analyseURLSearchClickthroughs(self):
         """
-        Performs analysis on gathered history searches.
+        Performs analysis on gathered URL search clickthroughs.
 
-        1. Finds common browsing history searches.
+        1. Finds common URL clickthroughs.
         """
 
-        self.analysedHistorySearches = {"Most Common": []}
+        self.analysedURLSearchClickthroughs = {"Most Common": []}
 
         # Sort the history searches based on use count, and extract them.
-        self.historySearches.sort(key=lambda x: x.useFrequency, reverse=True)
-        self.analysedHistorySearches["Most Common"] = self.historySearches[:10]
+        self.urlSearchClickthroughs.sort(key=lambda x: x.useFrequency, reverse=True)
+        self.analysedURLSearchClickthroughs["Most Common"] = self.urlSearchClickthroughs[:10]
 
         self.analysedAvailable.append(
-            ["analysedHistorySearches", self.analysedHistorySearches]
+            ["analysedUrlSearchClickthroughs", self.analysedURLSearchClickthroughs]
         )
 
         # Generate graph of commonly used fields.
         labels = []
         plots = []
-        for historySearch in self.analysedHistorySearches["Most Common"]:
-            labels.append(historySearch.query)
-            plots.append(historySearch.useFrequency)
+        for URLSearchClick in self.analysedURLSearchClickthroughs["Most Common"]:
+            labels.append(URLSearchClick.query)
+            plots.append(URLSearchClick.useFrequency)
 
         # Plot the bar chart.
         plt.clf()
@@ -1552,12 +1549,12 @@ class FoxHunter:
         ax.set(
             ylabel="Query",
             xlabel="Use Frequency",
-            title="Top Ten Most Common History Searches",
+            title="Top Ten Most Common URL Search Clickthroughs",
         )
 
         for directory in self.diagramDirectories:
             plt.savefig(
-                os.path.join(directory, "commonHistorySearches.png"),
+                os.path.join(directory, "commonURLSearchClickthroughs.png"),
                 dpi=400,
                 bbox_inches="tight",
             )
@@ -2072,7 +2069,8 @@ class FoxHunter:
         fig, ax = plt.subplots()
         ax.plot(
             [datetime.strptime(x[0], "%H:00") for x in browseTimes],
-            [x[1] for x in browseTimes],
+            [x[1] for x in browseTimes], 
+            "-o",
             color="dodgerblue",
         )
         ax.set(
@@ -2094,7 +2092,7 @@ class FoxHunter:
         plt.clf()
         fig, ax = plt.subplots()
         ax.plot(
-            [x[0] for x in browseDays], [x[1] for x in browseDays], color="dodgerblue"
+            [x[0] for x in browseDays], [x[1] for x in browseDays], "-o", color="dodgerblue"
         )
         ax.set(ylabel="Sites Visited", xlabel="Day", title="Days When User Most Active")
         ax.get_yaxis().set_major_locator(mtick.MaxNLocator(integer=True))
@@ -2153,9 +2151,9 @@ class FoxHunter:
         logging.debug("[*] Attempting to Analyse Form History...")
         self.analyseFormHistory()
         logging.debug("[^] Finished Analysis of Form History!\n")
-        logging.debug("[*] Attempting to Analyse History Searches...")
-        self.analyseHistorySearches()
-        logging.debug("[^] Finished Analysis of History Searches!\n")
+        logging.debug("[*] Attempting to Analyse URL Search Clickthroughs...")
+        self.analyseURLSearchClickthroughs()
+        logging.debug("[^] Finished Analysis of URL Search Clickthroughs!\n")
         logging.debug("[*] Attempting to Analyse Download History...")
         self.analyseDownloads()
         logging.debug("[^] Finished Analysis of Download History!\n")
@@ -2575,42 +2573,42 @@ def findFormHistory(formHistoryPath):
     return formHistoryList
 
 
-def findHistorySearches(historySearchPath):
+def findURLClickthroughs(URLSearchPath):
     """
-    Finds browsing history searches in the selected Firefox profile.
+    Finds URL history clickthroughs in the selected Firefox profile.
 
     Parameters
     ----------
-    historySearchPath : str
+    URLSearchPath : str
     Path to the places.sqlite file.
 
     Return Values
     -------------
-    historySearchList : [HistorySearch]
-    List of identified browsing history searches.
+    clickthroughList : [URLClickthrough]
+    List of identified URL clickthroughs.
     """
-    historySearchList = []
+    URLSearchClickthroughList = []
 
     # Check for presence of places.sqlite in profile folder. Return if not found.
-    if not fileExists(historySearchPath):
-        logging.debug("[!] Failed to Gather History Searches from 'places.sqlite'")
-        return historySearchList
+    if not fileExists(URLSearchPath):
+        logging.debug("[!] Failed to Gather URL Search Clickthroughs from 'places.sqlite'")
+        return URLSearchClickthroughList
 
     try:
         # Create connection to database and create cursor.
-        databaseConnection = sqlite3.connect(historySearchPath)
+        databaseConnection = sqlite3.connect(URLSearchPath)
         databaseCursor = databaseConnection.cursor()
 
         # Extract the form field history from the moz_inputhistory table.
-        for extractedHistorySearch in databaseCursor.execute(
+        for extractedURLClickthrough in databaseCursor.execute(
             "SELECT input, use_count FROM moz_inputhistory"
         ):
 
-            historySearchObject = HistorySearch(
-                query=extractedHistorySearch[0],
-                useFrequency=extractedHistorySearch[1],
+            historySearchObject = URLSearchClickthrough(
+                query=extractedURLClickthrough[0],
+                useFrequency=extractedURLClickthrough[1],
             )
-            historySearchList.append(historySearchObject)
+            URLSearchClickthroughList.append(historySearchObject)
 
     # Error out when database is locked.
     except:
@@ -2620,8 +2618,8 @@ def findHistorySearches(historySearchPath):
         sys.exit(1)
 
     # Return the list of history search objects.
-    logging.debug("[^] Successfully Gathered History Searches From 'places.sqlite'")
-    return historySearchList
+    logging.debug("[^] Successfully Gathered URL Search Clickthroughs From 'places.sqlite'")
+    return URLSearchClickthroughList
 
 
 def findDownloadHistory(downloadHistoryPath):
@@ -3382,7 +3380,7 @@ if __name__ == "__main__":
     logging.debug("\n\033[1m\033[4m[*] Extracting History Items...\033[0m\n")
 
     # Search for history searches within selected firefox profile (places.sqlite)
-    historySearches = findHistorySearches(
+    URLClickthroughs = findURLClickthroughs(
         os.path.join(arguments.profile, "places.sqlite")
     )
 
@@ -3424,7 +3422,7 @@ if __name__ == "__main__":
         certificates,
         cookies,
         formHistory,
-        historySearches,
+        URLClickthroughs,
         downloadHistory,
         browsingHistory,
         bookmarks,
