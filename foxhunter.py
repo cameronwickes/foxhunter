@@ -1324,7 +1324,7 @@ class FoxHunter:
         # Generate graph of commonly used fields.
         labels = []
         plots = []
-        for formField in reversed(self.analysedFormHistory["Most Common"]):
+        for formField in self.analysedFormHistory["Most Common"][::-1]:
             labels.append("{}={}".format(formField.name, formField.value))
             plots.append(formField.useCount)
 
@@ -1388,7 +1388,7 @@ class FoxHunter:
 
         # Add to analysed logins.
         for login in self.logins:
-            if login.password in sortedPasswords or login.username in sortedUsernames:
+            if login.password in [x[0] for x in sortedPasswords] or login.username in [x[0] for x in sortedUsernames]:
                 self.analysedLogins["Commonly Used"].append(login)
 
         self.analysedAvailable.append(["analysedLogins", self.analysedLogins])
@@ -1443,25 +1443,25 @@ class FoxHunter:
         # Generate graph of commonly used passwords and patterns.
         for diagram in [
             [
-                sortedUsernames,
+                sortedUsernames[::-1],
                 "Top Ten Most Common Usernames",
                 "Percentage",
                 "commonUsernames.png",
             ],
             [
-                sortedPasswords,
+                sortedPasswords[::-1],
                 "Top Ten Most Common Passwords",
                 "Percentage",
                 "commonPasswords.png",
             ],
             [
-                commonStrings[0],
+                commonStrings[0][::-1],
                 "Common Patterns Identified From Usernames",
                 "Count",
                 "commonUsernamePatterns.png",
             ],
             [
-                commonStrings[1],
+                commonStrings[1][::-1],
                 "Common Patterns Identified From Passwords",
                 "Count",
                 "commonPasswordPatterns.png",
